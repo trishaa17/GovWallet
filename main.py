@@ -1,8 +1,8 @@
 from flask import Flask
 from importlib.machinery import SourceFileLoader
-
+from dashTallyAccounts import create_dash1
 # Load dash1
-create_dash1 = SourceFileLoader('dash1', r'C:\Users\User\Downloads\numOfPeople\dashTallyAccounts.py').load_module().create_dash1
+# create_dash1 = SourceFileLoader('dash1', r'C:\Users\User\Downloads\numOfPeople\dashTallyAccounts.py').load_module().create_dash1
 server = Flask(__name__)
 # Register Dash apps
 app1 = create_dash1(server)

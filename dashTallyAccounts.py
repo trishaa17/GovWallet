@@ -45,11 +45,22 @@
 import pandas as pd
 import plotly.express as px
 from dash import Dash, dcc, html
+import requests
+from io import StringIO
+
+
 
 def create_dash1(server):
     # Load data
-    df = pd.read_csv(r"C:\Users\User\WORLD AQUATICS CHAMPIONSHIPS SINGAPORE PTE. LTD\WORLD AQUATICS CHAMPIONSHIPS SINGAPORE PTE. LTD - Technology & Innovation\Ewallet\govwallet_data.csv")  # Use relative path if hosting on Render
+    url = "https://wacsg2025-my.sharepoint.com/:x:/p/trisha_teo/EdyAJaCQLpFAp3JTaMCmK_8BkXS81I50q0dg7t5bDrsSEg?download=1"
 
+
+        # Send HTTP GET request
+    response = requests.get(url)
+    response.raise_for_status()  # optional, raise error if download fails
+    csv_data = response.content.decode('utf-8')
+    df = pd.read_csv(StringIO(csv_data))
+  
     # Group data
     summary = df.groupby(['payout_date', 'gms_role_name'])['gms_id'].nunique().reset_index()
     summary.rename(columns={'gms_id': 'unique_accounts'}, inplace=True)
