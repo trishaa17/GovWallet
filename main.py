@@ -1,7 +1,7 @@
 from flask import Flask
 from importlib.machinery import SourceFileLoader
-from dashTallyAccounts import create_dash1
-from prepare import create_dash2
+from dashGMSrole import create_dash1
+from dashAmount import create_dash2
 
 server = Flask(__name__)
 
@@ -12,8 +12,8 @@ app2 = create_dash2(server)
 def index():
     return '''
         <h1>Welcome</h1>
-        <p><a href="/app1/">GovWallet Dashboard</a></p>
-        <p><a href="/app2/">GovWallet Dashboard 2</a></p>
+        <p><a href="/app1/">GMS role</a></p>
+        <p><a href="/app2/">Amount</a></p>
        
        
     '''

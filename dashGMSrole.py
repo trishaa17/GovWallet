@@ -36,7 +36,7 @@ def create_dash1(server):
             style={'marginBottom': '20px'}
         ),
 
-        html.H2("Bar Chart: Unique Accounts per Role on Selected Date"),
+        html.H2("Unique Accounts per Role on Selected Date"),
         dcc.Graph(id='bar-chart'),
 
         html.H2("Total Unique Accounts per Role (All Dates)"),

@@ -1,4 +1,3 @@
-# prepare_data.py
 import pandas as pd
 import sqlite3
 import plotly.express as px
@@ -26,15 +25,15 @@ def create_dash2(server):
 
     print("Database created successfully.")
 
-    app = Dash(__name__)
+    app = Dash(__name__, server=server, url_base_pathname='/app2/')
 
     app.layout = html.Div([
-        html.H1("Volunteer Max Credits Dashboard"),
+        html.H1("Credits Dashboard"),
 
         dcc.Dropdown(
             id='name-filter',
             options=[{'label': n, 'value': n} for n in sorted(agg_df['name'].unique())],
-            placeholder="Select Volunteer Name(s)",
+            placeholder="Select Name(s)",
             multi=True
         ),
 
