@@ -33,17 +33,17 @@ def create_dash2(server):
 
         dcc.Dropdown(
             id='name-filter',
-            options=[{'label': n, 'value': n} for n in sorted(meta_df['name'].unique())],
+            options=[{'label': n, 'value': n} for n in sorted(agg_df['name'].unique())],
             placeholder="Select Volunteer Name(s)",
             multi=True
         ),
 
         dcc.DatePickerRange(
             id='date-filter',
-            min_date_allowed=meta_df['payout_date'].min(),
-            max_date_allowed=meta_df['payout_date'].max(),
-            start_date=meta_df['payout_date'].min(),
-            end_date=meta_df['payout_date'].max(),
+            min_date_allowed=agg_df['payout_date'].min(),
+            max_date_allowed=agg_df['payout_date'].max(),
+            start_date=agg_df['payout_date'].min(),
+            end_date=agg_df['payout_date'].max(),
         ),
 
         dcc.Checklist(
