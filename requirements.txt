@@ -1,5 +1,7 @@
 dash
-flask
 pandas
-plotly
+flask
 gunicorn
+sqlite3  
+plotly
+requests
