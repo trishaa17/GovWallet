@@ -4,6 +4,7 @@ from dash import Dash, dcc, html, dash_table, Input, Output
 import requests
 from io import StringIO
 import random
+from datetime import date, timedelta
 
 def generate_pastel_colors(n):
     import colorsys
@@ -74,6 +75,10 @@ def create_dash_campaign_clashes(server):
     min_date = min(df['date_created'])
     max_date = max(df['date_created'])
 
+    today = date.today()
+    this_monday = today - timedelta(days=today.weekday())  # Monday
+    this_sunday = this_monday + timedelta(days=6) 
+
     app.layout = html.Div([
         html.H1("GovWallet Campaign Clashes", style={'textAlign': 'center'}),
 
@@ -81,8 +86,8 @@ def create_dash_campaign_clashes(server):
             id='date-range-clashes',
             min_date_allowed=min_date,
             max_date_allowed=max_date,
-            start_date=min_date,
-            end_date=max_date,
+            start_date=this_monday,
+            end_date=this_sunday,
             display_format='YYYY-MM-DD'
         ),
 
