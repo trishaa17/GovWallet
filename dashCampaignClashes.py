@@ -5,6 +5,7 @@ import requests
 from io import StringIO
 import random
 from datetime import date, timedelta
+from loadcsv import load_csv_data
 
 def generate_pastel_colors(n):
     import colorsys
@@ -51,12 +52,14 @@ def detect_clashes_by_category(df, clash_categories):
 
 
 def create_dash_campaign_clashes(server):
-    url = "https://wacsg2025-my.sharepoint.com/:x:/p/trisha_teo/EUxDIdQ6juBCpIJ6Z_sRuO0BfFhGa1kSPg8TRBsMS-Uzyg?download=1"
-    response = requests.get(url)
-    response.raise_for_status()
-    csv_data = response.content.decode('utf-8')
+    # url = "https://wacsg2025-my.sharepoint.com/:x:/p/trisha_teo/EUxDIdQ6juBCpIJ6Z_sRuO0BfFhGa1kSPg8TRBsMS-Uzyg?download=1"
+    # response = requests.get(url)
+    # response.raise_for_status()
+    # csv_data = response.content.decode('utf-8')
 
-    df = pd.read_csv(StringIO(csv_data), parse_dates=['date_created'])
+    # df = pd.read_csv(StringIO(csv_data), parse_dates=['date_created'])
+    df = load_csv_data()
+    df['date_created'] = pd.to_datetime(df['date_created'], utc=True)
     df['date_created'] = df['date_created'].dt.date
 
     not_allowed_clash_categories = {

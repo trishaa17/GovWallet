@@ -33,7 +33,7 @@ def index():
         <p><a href="/appCampaignClashes/">Identify Campaign Clashes</a></p>
         <p><a href="/appShiftClashes/">Identify Shift Timing Clashes</a></p>
        
-       <button onclick="location.reload()">Refresh</button>
+       
     '''
 
 if __name__ == '__main__':
