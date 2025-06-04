@@ -3,14 +3,16 @@ import plotly.express as px
 from dash import Dash, dcc, html, Input, Output
 import requests
 from io import StringIO
+from loadcsv import load_csv_data
 
 
 def create_dash_number_of_roles(server):
-    url = "https://wacsg2025-my.sharepoint.com/:x:/p/trisha_teo/EfFwqNRlqjdKgUnvBWe53SEBKKJA9yK7RomjADmwfuT6iQ?download=1"
-    response = requests.get(url)
-    response.raise_for_status()
-    csv_data = response.content.decode('utf-8')
-    df = pd.read_csv(StringIO(csv_data))
+    # url = "https://wacsg2025-my.sharepoint.com/:x:/p/trisha_teo/EfFwqNRlqjdKgUnvBWe53SEBKKJA9yK7RomjADmwfuT6iQ?download=1"
+    # response = requests.get(url)
+    # response.raise_for_status()
+    # csv_data = response.content.decode('utf-8')
+    # df = pd.read_csv(StringIO(csv_data))
+    df = load_csv_data()
     df['date_created'] = pd.to_datetime(df['date_created'], utc=True)
 
     # Treat missing or empty role names as 'Others'

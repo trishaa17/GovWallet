@@ -2,16 +2,19 @@ import sqlite3
 import plotly.express as px
 import pandas as pd
 from dash import Dash, dcc, html, Input, Output, dash_table
-import requests
-from io import StringIO
+# import requests
+# from io import StringIO
 from datetime import datetime, date, timedelta
+from loadcsv import load_csv_data
 
 def create_dash_individual_amount(server):
-    url = "https://wacsg2025-my.sharepoint.com/:x:/p/trisha_teo/EfFwqNRlqjdKgUnvBWe53SEBKKJA9yK7RomjADmwfuT6iQ?download=1"
-    response = requests.get(url)
-    response.raise_for_status()
-    csv_data = response.content.decode('utf-8')
-    df = pd.read_csv(StringIO(csv_data))
+    # url = "https://wacsg2025-my.sharepoint.com/:x:/p/trisha_teo/EfFwqNRlqjdKgUnvBWe53SEBKKJA9yK7RomjADmwfuT6iQ?download=1"
+    # response = requests.get(url)
+    # response.raise_for_status()
+    # csv_data = response.content.decode('utf-8')
+    # df = pd.read_csv(StringIO(csv_data))
+
+    df = load_csv_data()
 
     df = df[df['wallet_status'] == 'completed']
     df['date_created'] = pd.to_datetime(df['date_created']).dt.date
