@@ -140,7 +140,10 @@ def create_dash_shift_clashes(server):
             placeholder='Select a category to view its campaign key',
             style={'marginBottom': '10px'}
         ),
-        html.Div(id='category-key-display')
+        html.Div(id='category-key-display'),
+
+        html.H2("High-Risk GMS IDs", style={'marginTop': '40px', 'textAlign': 'center'}),
+        html.Div(id='high-risk-gms-table')
     ])
 
     @app.callback(
@@ -262,15 +265,22 @@ def create_dash_shift_clashes(server):
         ]
 
         return dash_table.DataTable(
-            columns=[{"name": i, "id": i} for i in [
-                "gms_id", "name", "date_created", "registration_location_id",
-                "approval_final_status", "amount", "approval_final_remarks", "wallet_status"
-            ] if i in df_filtered.columns],
+            columns=[
+                {"name": "GMS ID", "id": "gms_id"},
+                {"name": "Name", "id": "name"},
+                {"name": "Date created", "id": "date_created"},
+                {"name": "Campaign", "id": "registration_location_id"},
+                {"name": "Final approval status", "id": "approval_final_status"},
+                {"name": "Amount", "id": "amount"},
+                {"name": "Final approval remarks", "id": "approval_final_remarks"},
+                {"name": "Wallet status", "id": "wallet_status"},
+            ],
             data=df_filtered.to_dict('records'),
             style_table={'overflowX': 'auto', 'marginBottom': '30px'},
             style_cell={'textAlign': 'left'},
             style_data_conditional=style_data_conditional,
             page_size=10,
+            sort_action='native',
             style_header={'fontWeight': 'bold'},
         )
 
@@ -293,6 +303,68 @@ def create_dash_shift_clashes(server):
             'borderRadius': '5px',
             'backgroundColor': '#f9f9f9'
         })
+
+    @app.callback(
+        Output('high-risk-gms-table', 'children'),
+        Input('date-range-clashes', 'start_date'),
+        Input('date-range-clashes', 'end_date'),
+        Input('filter-gms-id', 'value'),
+        Input('filter-name', 'value'),
+        Input('filter-location-id', 'value'),
+    )
+    def update_high_risk_gms(start_date, end_date, gms_id_filter, name_filter, loc_id_filter):
+        start = pd.to_datetime(start_date).date()
+        end = pd.to_datetime(end_date).date()
+
+        gms_risk = {}       # gms_id -> set of clash categories
+        gms_names = {}      # gms_id -> set of names
+
+        for label, df_clash in app.filtered_clash_dfs.items():
+            df_filtered = df_clash[(df_clash['date_created'] >= start) & (df_clash['date_created'] <= end)]
+
+            if gms_id_filter:
+                df_filtered = df_filtered[df_filtered['gms_id'].isin(gms_id_filter)]
+            if name_filter:
+                df_filtered = df_filtered[df_filtered['name'].isin(name_filter)]
+            if loc_id_filter:
+                df_filtered = df_filtered[df_filtered['registration_location_id'].isin(loc_id_filter)]
+
+            for _, row in df_filtered.iterrows():
+                gms_id = row['gms_id']
+                name = row['name']
+                gms_risk.setdefault(gms_id, set()).add(label)
+                gms_names.setdefault(gms_id, set()).add(name)
+
+        high_risk_data = [
+            {
+                "gms_id": gms_id,
+                "name": ", ".join(sorted(gms_names.get(gms_id, []))),
+                "clash_categories": ", ".join(sorted(categories)),
+                "num_categories": len(categories)
+            }
+            for gms_id, categories in gms_risk.items()
+        ]
+
+        if not high_risk_data:
+            return html.Div("No high-risk GMS IDs found in the selected range.")
+
+        df_risk = pd.DataFrame(high_risk_data).sort_values(by="num_categories", ascending=False)
+
+        return dash_table.DataTable(
+            columns=[
+                {"name": "GMS ID", "id": "gms_id"},
+                {"name": "Name(s)", "id": "name"},
+                {"name": "Categories of the clashes", "id": "clash_categories"},
+                {"name": "Number of clashes", "id": "num_categories"},
+            ],
+            data=df_risk.to_dict('records'),
+            style_table={'overflowX': 'auto'},
+            style_cell={'textAlign': 'left'},
+            page_size=10,
+            sort_action='native',
+            style_header={'fontWeight': 'bold'},
+        )
+
 
 
     return app
