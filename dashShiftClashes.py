@@ -4,14 +4,14 @@ from dash import Dash, dcc, html, dash_table, Input, Output
 import requests
 from io import StringIO
 import random
-
+from datetime import date, timedelta
+import colorsys
 
 
 
 def generate_pastel_colors(n):
-    import colorsys
     pastel_colors = []
-    alpha = 0.4  # transparency
+    alpha = 0.4  
 
     for i in range(n):
         h = i / n
@@ -101,6 +101,11 @@ def create_dash_shift_clashes(server):
     min_date = min(df['date_created'])
     max_date = max(df['date_created'])
 
+    # Get current week's Monday and Sunday
+    today = date.today()
+    this_monday = today - timedelta(days=today.weekday())  # Monday
+    this_sunday = this_monday + timedelta(days=6) 
+
     app.layout = html.Div([
         html.H1("GovWallet Shift Timing Clashes", style={'textAlign': 'center'}),
 
@@ -108,8 +113,8 @@ def create_dash_shift_clashes(server):
             id='date-range-clashes',
             min_date_allowed=min_date,
             max_date_allowed=max_date,
-            start_date=min_date,
-            end_date=max_date,
+            start_date=this_monday,
+            end_date=this_sunday,
             display_format='YYYY-MM-DD'
         ),
 
@@ -157,7 +162,6 @@ def create_dash_shift_clashes(server):
         start = pd.to_datetime(start_date).date()
         end = pd.to_datetime(end_date).date()
 
-        # Combine all clash_dfs into one for dropdown values
         all_data = pd.concat([df[(df['date_created'] >= start) & (df['date_created'] <= end)] for df in clash_dfs.values()])
 
         gms_options = [{'label': x, 'value': x} for x in sorted(all_data['gms_id'].dropna().unique())]
