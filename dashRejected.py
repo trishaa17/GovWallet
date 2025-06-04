@@ -49,25 +49,14 @@ def create_dash_rejection_rate(server):
 
         dcc.Graph(id='rejection-pie'),
 
-        dcc.RadioItems(
-            id='sort-by',
-            options=[
-                {'label': 'Rejected (Descending)', 'value': 'rejected'},
-                {'label': 'Rejection Rate (Descending)', 'value': 'Rejection Rate'},
-                {'label': 'Approved (Descending)', 'value': 'approved'}
-            ],
-            value='rejected',
-            labelStyle={'display': 'inline-block', 'margin-right': '20px'},
-            style={'margin': '10px 0'}
-        ),
-
-
+        
         html.H3("Rejection/Success Summary by Role and Campaign"),
         dash_table.DataTable(
             id='summary-table',
             columns=[],
             data=[],
             style_table={'overflowX': 'auto'},
+            sort_action='native',
             style_cell={'textAlign': 'center', 'padding': '5px'},
             style_header={'backgroundColor': 'lightgrey', 'fontWeight': 'bold'},
             style_data_conditional=[]  # will be filled in callback
@@ -83,10 +72,9 @@ def create_dash_rejection_rate(server):
         Input('date-filter', 'end_date'),
         Input('role-filter', 'value'),
         Input('campaign-filter', 'value'),
-        Input('sort-by', 'value')
 
     )
-    def update_dashboard(start_date, end_date, selected_roles, selected_campaigns, sort_by):
+    def update_dashboard(start_date, end_date, selected_roles, selected_campaigns):
 
         filtered = df.copy()
 
@@ -129,12 +117,18 @@ def create_dash_rejection_rate(server):
         summary_pivot['Rejection Rate'] = summary_pivot['Rejection Rate'].fillna(0.00)
 
 
-        columns = [{'name': col, 'id': col} for col in summary_pivot.columns]
+        columns = [
+            {'name': 'Index', 'id': 'Index'},
+            {'name': 'Role', 'id': 'gms_role_name'},
+            {'name': 'Campaign', 'id': 'registration_location_id'},
+            {'name': 'Approved Count', 'id': 'approved'},
+            {'name': 'Rejected Count', 'id': 'rejected'},
+            {'name': 'Total Submissions', 'id': 'Total'},
+            {'name': 'Rejection Rate (%)', 'id': 'Rejection Rate'},
+        ]
+
         data = summary_pivot.to_dict('records')
 
-
-        if sort_by in summary_pivot.columns:
-           summary_pivot = summary_pivot.sort_values(by=sort_by, ascending=False)
 
         # Add index column
         summary_pivot.insert(0, 'Index', range(1, len(summary_pivot) + 1))
@@ -159,9 +153,15 @@ def create_dash_rejection_rate(server):
         data.append(summary_row)
 
         # Update column definitions
-        columns = [{'name': col, 'id': col} for col in summary_pivot.columns]
-
-
+        columns = [
+            {'name': 'Index', 'id': 'Index'},
+            {'name': 'Role', 'id': 'gms_role_name'},
+            {'name': 'Campaign', 'id': 'registration_location_id'},
+            {'name': 'Approved Count', 'id': 'approved'},
+            {'name': 'Rejected Count', 'id': 'rejected'},
+            {'name': 'Total Submissions', 'id': 'Total'},
+            {'name': 'Rejection Rate (%)', 'id': 'Rejection Rate'},
+        ]
 
         # Highlight rows where rejection rate > 50%
         style_conditional = [

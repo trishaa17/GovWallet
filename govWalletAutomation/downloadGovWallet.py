@@ -55,10 +55,21 @@ def download_csv(download_dir):
     wait.until(EC.element_to_be_clickable(impexp))
     impexp.click()
 
-    btns = wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, "button")))
-    expbtn = btns[13]  # index 13 for export
-    wait.until(EC.element_to_be_clickable(expbtn))
+    expbtn = wait.until(EC.element_to_be_clickable((
+        By.CSS_SELECTOR, "a.button[href='/admin/content']"
+    )))
     expbtn.click()
+
+    target_link = wait.until(EC.element_to_be_clickable((
+        By.CSS_SELECTOR, "a[href='/admin/content/allowance_history?bookmark=102']"
+    )))
+    target_link.click()
+
+    export_btn = wait.until(EC.element_to_be_clickable((
+        By.XPATH, "//button[.//span[text()='Export Items']]"
+    )))
+    export_btn.click()
+
 
     # Change limit to unlimited
     limit = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "input[type='number']")))
