@@ -17,9 +17,9 @@ server = Flask(__name__)
 
 def auto_refresh_cache():
     while True:
-        time.sleep(600)  # 10 minutes
+        time.sleep(300)  # 5 minutes
         try:
-            csv_cache.force_refresh()
+            loadcsv.force_refresh()
             print("CSV cache auto-refreshed")
         except Exception as e:
             print("Failed to auto-refresh CSV cache:", e)
@@ -52,6 +52,14 @@ def index():
        
        
     '''
+
+@server.route('/refresh-cache')
+def refresh_cache():
+    try:
+        loadcsv.force_refresh()
+        return jsonify({"status": "success", "message": "Cache refreshed"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
     server.run(debug=True)
