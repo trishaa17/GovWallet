@@ -8,8 +8,22 @@ from dashRejected import create_dash_rejection_rate
 from dashLocationHeatmap import create_dash_heatmap
 from dashCampaignClashes import create_dash_campaign_clashes
 from dashShiftClashes import create_dash_shift_clashes
+import loadcsv
 
 server = Flask(__name__)
+
+def auto_refresh_cache():
+    while True:
+        time.sleep(600)  # 10 minutes
+        try:
+            csv_cache.force_refresh()
+            print("CSV cache auto-refreshed")
+        except Exception as e:
+            print("Failed to auto-refresh CSV cache:", e)
+
+# Start background thread to refresh cache
+threading.Thread(target=auto_refresh_cache, daemon=True).start()
+
 
 appNumberOfRoles = create_dash_number_of_roles(server)
 appMaxAmount = create_dash_individual_amount(server)

@@ -93,6 +93,7 @@ def create_dash_heatmap(server):
                 {'name': 'Unique ID Count', 'id': 'unique_ids', 'type': 'numeric'},
             ],
             data=[],
+            sort_action='native', 
             style_cell={'textAlign': 'center'},
             style_header={'fontWeight': 'bold'},
             style_data_conditional=[

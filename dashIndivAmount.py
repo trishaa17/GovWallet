@@ -87,18 +87,6 @@ def create_dash_individual_amount(server):
 
         html.H2("Amount earned by each individual for each day", style={'textAlign': 'center'}),
 
-        dcc.RadioItems(
-            id='sort-mode',
-            options=[
-                {'label': 'Sort by Date', 'value': 'date'},
-                {'label': 'Sort by Amount (Descending)', 'value': 'amount_desc'},
-                {'label': 'Sort by Amount (Ascending)', 'value': 'amount_asc'}
-            ],
-            value='date',
-            labelStyle={'display': 'block'},
-            style={'marginTop': '10px'}
-        ),
-
         dash_table.DataTable(
             id='result-table',
             columns=[
@@ -109,6 +97,7 @@ def create_dash_individual_amount(server):
             ],
             page_size=20,
             style_table={'overflowX': 'auto'},
+            sort_action='native',
             style_cell={'textAlign': 'left'},
             style_data_conditional=[
                 {
@@ -146,9 +135,8 @@ def create_dash_individual_amount(server):
         Input('date-range', 'start_date'),
         Input('date-range', 'end_date'),
         Input('amount-check', 'value'),
-        Input('sort-mode', 'value'),
     )
-    def update_table_and_charts(selected_gmsids, date_mode, single_date, start_date, end_date, amount_filter, sort_mode):
+    def update_table_and_charts(selected_gmsids, date_mode, single_date, start_date, end_date, amount_filter):
         query = """
             SELECT gms_id, name, date_created, amount
             FROM wallet_data
@@ -184,13 +172,7 @@ def create_dash_individual_amount(server):
         if 'over60' in amount_filter:
             filtered = filtered[filtered['amount'] > 60]
 
-        # Sort
-        if sort_mode == 'date':
-            filtered = filtered.sort_values(by=['date_created', 'gms_id'])
-        else:
-            filtered = filtered.sort_values(by='amount', ascending=(sort_mode == 'amount_asc'))
 
-        # Table: group by gms_id + date_created, aggregate names as comma list
         grouped_table = filtered.groupby(['gms_id', 'date_created']) \
             .agg({'amount': 'sum', 'name': lambda x: ', '.join(sorted(set(x)))}) \
             .reset_index()
