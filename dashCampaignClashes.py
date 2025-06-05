@@ -21,38 +21,82 @@ def generate_pastel_colors(n):
 
     random.shuffle(pastel_colors)
     return pastel_colors
-
+    
 def detect_clashes_by_category(df, clash_categories):
-    df['registration_location_id_lower'] = df['registration_location_id'].str.lower()
+    # Helper to normalize campaign names
+    def normalize_campaign_name(c):
+        return c.lower().replace('_', ' ').replace('-', ' ')
+
+    df = df.copy()
+    df['normalized_loc'] = df['registration_location_id'].str.lower().str.replace('[-_]', ' ', regex=True)
+
     clashes_by_category = {}
 
+    # Track all known campaigns to exclude for "Other clashes"
+    known_campaigns_set = set()
+    for campaigns_to_check in clash_categories.values():
+        known_campaigns_set.update(normalize_campaign_name(c) for c in campaigns_to_check)
+
+    # Group once
+    grouped = df.groupby(['gms_id', 'date_created'])
+
+    # To track which groups were already classified under any category
+    classified_groups = set()
+
+    # First pass: check for specific clash categories
     for label, campaigns_to_check in clash_categories.items():
         clashing = []
+        campaigns_to_check_norm = set(normalize_campaign_name(c) for c in campaigns_to_check)
 
-        grouped = df.groupby(['gms_id', 'date_created'])
-        for (gms_id, date), group in grouped:
-            campaigns = set(group['registration_location_id_lower'])
-            
-            # Check if all campaigns in this category appear in the group (at least 2 of them)
-            # You can decide whether *all* campaigns must appear or *any* 2 or more must appear
-            # Here I assume clash means at least 2 campaigns from campaigns_to_check exist together
-            
-            present_campaigns = campaigns.intersection(campaigns_to_check)
-            if len(present_campaigns) >= 2:
-                # Select rows corresponding to these present campaigns for this clash
-                clash_rows = group[group['registration_location_id_lower'].isin(present_campaigns)]
-                clashing.append(clash_rows)
+        for (gms_id, date_created), group in grouped:
+            group_key = (gms_id, date_created)
+
+            campaigns_in_group = set(group['normalized_loc'])
+
+            present_silent = {camp for camp in campaigns_in_group if camp.endswith(" silent hours am")}
+            present_am = {camp for camp in campaigns_in_group if camp.endswith(" am") and not camp.endswith(" silent hours am")}
+
+            if present_silent and present_am:
+                all_present = present_silent.union(present_am)
+
+                # Check if all present campaigns are in this category
+                if all(camp in campaigns_to_check_norm for camp in all_present):
+                    clash_rows = group[group['normalized_loc'].isin(all_present)]
+                    clashing.append(clash_rows)
+                    classified_groups.add(group_key)
 
         if clashing:
             clashes_by_category[label] = pd.concat(clashing).drop_duplicates()
         else:
             clashes_by_category[label] = pd.DataFrame(columns=df.columns)
 
+    # Second pass: "Other clashes"
+    clashing_other = []
+    for (gms_id, date_created), group in grouped:
+        group_key = (gms_id, date_created)
+        if group_key in classified_groups:
+            continue  # already assigned to a known category
+
+        campaigns_in_group = set(group['normalized_loc'])
+        present_silent = {camp for camp in campaigns_in_group if camp.endswith(" silent hours am")}
+        present_am = {camp for camp in campaigns_in_group if camp.endswith(" am") and not camp.endswith(" silent hours am")}
+
+        if present_silent and present_am:
+            all_present = present_silent.union(present_am)
+            clash_rows = group[group['normalized_loc'].isin(all_present)]
+            clashing_other.append(clash_rows)
+
+    if clashing_other:
+        clashes_by_category["Other clashes"] = pd.concat(clashing_other).drop_duplicates()
+    else:
+        clashes_by_category["Other clashes"] = pd.DataFrame(columns=df.columns)
+
     return clashes_by_category
 
 
+
 def create_dash_campaign_clashes(server):
-    # url = "https://wacsg2025-my.sharepoint.com/:x:/p/trisha_teo/EUxDIdQ6juBCpIJ6Z_sRuO0BfFhGa1kSPg8TRBsMS-Uzyg?download=1"
+    # url = "https://wacsg2025-my.sharepoint.com/:x:/p/trisha_teo/EVrANWuO5ORCiBcETNa7kZ4BWbjnyqc5IPX7r_Q-VGAf5w?download=1"
     # response = requests.get(url)
     # response.raise_for_status()
     # csv_data = response.content.decode('utf-8')
