@@ -5,12 +5,13 @@ import requests
 from io import StringIO
 import random
 from datetime import date, timedelta
-from loadcsv import load_csv_data
+import colorsys
+# from loadcsv import load_csv_data
+
 
 def generate_pastel_colors(n):
-    import colorsys
     pastel_colors = []
-    alpha = 0.4  # transparency
+    alpha = 0.4  
 
     for i in range(n):
         h = i / n
@@ -21,108 +22,82 @@ def generate_pastel_colors(n):
 
     random.shuffle(pastel_colors)
     return pastel_colors
-    
-def detect_clashes_by_category(df, clash_categories):
-    # Helper to normalize campaign names
-    def normalize_campaign_name(c):
-        return c.lower().replace('_', ' ').replace('-', ' ')
 
-    df = df.copy()
-    df['normalized_loc'] = df['registration_location_id'].str.lower().str.replace('[-_]', ' ', regex=True)
+def detect_clashes_by_keyword(df, category_keywords):
+    # Normalize registration_location_id: lowercase and remove dashes/underscores
+    df['registration_location_id_norm'] = df['registration_location_id'].str.lower().str.replace(r'[-_]', '', regex=True)
 
     clashes_by_category = {}
+    used_campaigns = set()
 
-    # Track all known campaigns to exclude for "Other clashes"
-    known_campaigns_set = set()
-    for campaigns_to_check in clash_categories.values():
-        known_campaigns_set.update(normalize_campaign_name(c) for c in campaigns_to_check)
-
-    # Group once
-    grouped = df.groupby(['gms_id', 'date_created'])
-
-    # To track which groups were already classified under any category
-    classified_groups = set()
-
-    # First pass: check for specific clash categories
-    for label, campaigns_to_check in clash_categories.items():
+    # Process more specific keywords first (order matters)
+    for label, keyword in category_keywords.items():
         clashing = []
-        campaigns_to_check_norm = set(normalize_campaign_name(c) for c in campaigns_to_check)
 
-        for (gms_id, date_created), group in grouped:
-            group_key = (gms_id, date_created)
+        grouped = df.groupby(['gms_id', 'date_created'])
 
-            campaigns_in_group = set(group['normalized_loc'])
+        for (gms_id, date), group in grouped:
+            # Match campaigns for this category, excluding ones already matched to earlier categories
+            matched_campaigns = set(
+                group.loc[
+                    group['registration_location_id_norm'].str.contains(keyword) &
+                    ~group['registration_location_id_norm'].isin(used_campaigns),
+                    'registration_location_id_norm'
+                ]
+            )
 
-            present_silent = {camp for camp in campaigns_in_group if camp.endswith(" silent hours am")}
-            present_am = {camp for camp in campaigns_in_group if camp.endswith(" am") and not camp.endswith(" silent hours am")}
-
-            if present_silent and present_am:
-                all_present = present_silent.union(present_am)
-
-                # Check if all present campaigns are in this category
-                if all(camp in campaigns_to_check_norm for camp in all_present):
-                    clash_rows = group[group['normalized_loc'].isin(all_present)]
-                    clashing.append(clash_rows)
-                    classified_groups.add(group_key)
+            if len(matched_campaigns) >= 2:
+                clash_rows = group[group['registration_location_id_norm'].isin(matched_campaigns)]
+                clashing.append(clash_rows)
 
         if clashing:
-            clashes_by_category[label] = pd.concat(clashing).drop_duplicates()
+            result_df = pd.concat(clashing).drop_duplicates()
+            clashes_by_category[label] = result_df
+
+            # Track used campaigns to prevent overlaps
+            used_campaigns.update(result_df['registration_location_id_norm'].unique())
         else:
             clashes_by_category[label] = pd.DataFrame(columns=df.columns)
-
-    # Second pass: "Other clashes"
-    clashing_other = []
-    for (gms_id, date_created), group in grouped:
-        group_key = (gms_id, date_created)
-        if group_key in classified_groups:
-            continue  # already assigned to a known category
-
-        campaigns_in_group = set(group['normalized_loc'])
-        present_silent = {camp for camp in campaigns_in_group if camp.endswith(" silent hours am")}
-        present_am = {camp for camp in campaigns_in_group if camp.endswith(" am") and not camp.endswith(" silent hours am")}
-
-        if present_silent and present_am:
-            all_present = present_silent.union(present_am)
-            clash_rows = group[group['normalized_loc'].isin(all_present)]
-            clashing_other.append(clash_rows)
-
-    if clashing_other:
-        clashes_by_category["Other clashes"] = pd.concat(clashing_other).drop_duplicates()
-    else:
-        clashes_by_category["Other clashes"] = pd.DataFrame(columns=df.columns)
 
     return clashes_by_category
 
 
+def create_dash_shift_clashes_venue(server):
+    url = "https://wacsg2025-my.sharepoint.com/:x:/p/trisha_teo/EXMm4it_HQtPiiDnLuS4iWQB_QX4KRWYNExsu-yRGrK0bg?download=1"
+    response = requests.get(url)
+    response.raise_for_status()
+    csv_data = response.content.decode('utf-8')
 
-def create_dash_campaign_clashes(server):
-
-    df = load_csv_data()
+    df = pd.read_csv(StringIO(csv_data))
+    # df = load_csv_data()
     df['date_created'] = pd.to_datetime(df['date_created'], utc=True)
     df['date_created'] = df['date_created'].dt.date
+    df = df[df['approval_final_status'].str.lower() == 'pending']
 
-    not_allowed_clash_categories = {
-        "AQC clashes": ("aqc_attendance_am", "aqc_attendance_silent_hours_am"),
-        "WAC clashes": ("wac_attendance_am", "wac_attendance_silent_hours_am"),
-        "Khall clashes": ("khall_attendance_am", "khall_attendance_silent_hours_am"),
-        "Airpt clashes": ("airpt_attendance_am", "airpt_attendance_silent_hours_am", "airpt-attendance-am"),
+
+    category_keywords = {
+        "Silent Hour 11pm - 7am": "silenthour11pm7am",
+        "Silent Hours AM": "silenthoursam",
+        "AM": "attendanceam",
+        "PM": "attendancepm",
     }
 
 
-    clash_dfs = detect_clashes_by_category(df, not_allowed_clash_categories)
+    clash_dfs = detect_clashes_by_keyword(df, category_keywords)
 
-    app = Dash(__name__, server=server, routes_pathname_prefix='/appCampaignClashes/')
-    app.title = "GovWallet Campaign Clashes"
+    app = Dash(__name__, server=server, routes_pathname_prefix='/appShiftClashesVenue/')
+    app.title = "GovWallet Shift Timing Clashes"
 
     min_date = min(df['date_created'])
     max_date = max(df['date_created'])
 
+    # Get current week's Monday and Sunday
     today = date.today()
     this_monday = today - timedelta(days=today.weekday())  # Monday
     this_sunday = this_monday + timedelta(days=6) 
 
     app.layout = html.Div([
-        html.H1("GovWallet Campaign Clashes (Finance Manager Version)", style={'textAlign': 'center'}),
+        html.H1("GovWallet Shift Timing Clashes (Venue Manager Version)", style={'textAlign': 'center'}),
 
         dcc.DatePickerRange(
             id='date-range-clashes',
@@ -145,29 +120,25 @@ def create_dash_campaign_clashes(server):
         ], style={'marginTop': '20px', 'marginBottom': '20px'}),
 
 
-        html.H2("Silent_Hours AM & AM clashes", style={'textAlign': 'center'}),
 
         html.Div(id='clash-summary-chart'),
 
-        html.Label("Select Clash Location to View Details:", style = {'fontWeight': 'bold'}),
-        dcc.Dropdown(id='category-dropdown', placeholder='Select a clash location'),
+        html.Label("Select Clash Shift Timing to View Details:", style = {'fontWeight': 'bold'}),
+        dcc.Dropdown(id='category-dropdown', placeholder='Select a clashing shift timing'),
 
         html.Div(id='category-table'),
 
-        html.Label("Key: View Campaigns for Selected Clash Category:", style = {'fontWeight': 'bold'}),
+        html.Label("Key: View Campaigns for Selected Clash Timing:", style = {'fontWeight': 'bold'}),
         dcc.Dropdown(
             id='category-key-dropdown',
-            options=[{'label': key, 'value': key} for key in not_allowed_clash_categories.keys()],
+            options=[{'label': key, 'value': key} for key in category_keywords.keys()],
             placeholder='Select a category to view its campaign key',
             style={'marginBottom': '10px'}
         ),
         html.Div(id='category-key-display'),
 
-        html.H2("High-Risk GMS IDs Summary", style={'textAlign': 'center', 'marginTop': '40px'}),
+        html.H2("High-Risk GMS IDs", style={'marginTop': '40px', 'textAlign': 'center'}),
         html.Div(id='high-risk-gms-table')
-
-
-        
     ])
 
     @app.callback(
@@ -181,7 +152,6 @@ def create_dash_campaign_clashes(server):
         start = pd.to_datetime(start_date).date()
         end = pd.to_datetime(end_date).date()
 
-        # Combine all clash_dfs into one for dropdown values
         all_data = pd.concat([df[(df['date_created'] >= start) & (df['date_created'] <= end)] for df in clash_dfs.values()])
 
         gms_options = [{'label': x, 'value': x} for x in sorted(all_data['gms_id'].dropna().unique())]
@@ -194,7 +164,7 @@ def create_dash_campaign_clashes(server):
     @app.callback(
         Output('clash-summary-chart', 'children'),
         Output('category-dropdown', 'options'),
-        Output('category-dropdown', 'value'),
+        Output('category-dropdown', 'value'), 
         Input('date-range-clashes', 'start_date'),
         Input('date-range-clashes', 'end_date'),
         Input('filter-gms-id', 'value'),
@@ -223,30 +193,31 @@ def create_dash_campaign_clashes(server):
             unique_person_dates = df_filtered.groupby(['gms_id', 'date_created']).ngroups
             summary_data.append({'category': label, 'clash_count': unique_person_dates})
 
-        app.filtered_clash_dfs = filtered_clash_dfs  # Store filtered data
+        app.filtered_clash_dfs = filtered_clash_dfs
 
         summary_df = pd.DataFrame(summary_data)
         summary_df = summary_df.sort_values('clash_count', ascending=True)
 
         if summary_df['clash_count'].sum() == 0:
-            bar_fig = px.bar(title="No clashes found in selected date range.")
+            bar_fig = px.bar(title="No clashes found in selected date range and filters.")
         else:
             bar_fig = px.bar(
                 summary_df,
                 x='clash_count',
                 y='category',
                 orientation='h',
-                title='Number of Clashes by Location',
-                labels={'category': 'Clash Location', 'clash_count': 'Number of Clashes'},
+                title='Number of Clashes by Shift Timing',
+                labels={'category': 'Clashing Shift Timing', 'clash_count': 'Number of Clashes'},
                 color='clash_count',
                 color_continuous_scale='Inferno'
             )
 
-        dropdown_options = [{"label": label, "value": label} for label in clash_dfs.keys()]
+        dropdown_options = [{"label": label, "value": label} for label in filtered_clash_dfs.keys()]
         default_value = dropdown_options[0]["value"] if dropdown_options else None
 
         return dcc.Graph(figure=bar_fig), dropdown_options, default_value
-    
+
+
     @app.callback(
         Output('category-table', 'children'),
         Input('category-dropdown', 'value')
@@ -259,7 +230,7 @@ def create_dash_campaign_clashes(server):
 
         if df_filtered.empty:
             return html.Div(
-                "No clashes found for the selected location.",
+                "No clashes found for the selected shift timing.",
                 style={
                     'textAlign': 'center',
                     'fontWeight': 'bold',
@@ -303,10 +274,10 @@ def create_dash_campaign_clashes(server):
             style_cell={'textAlign': 'left'},
             style_data_conditional=style_data_conditional,
             page_size=10,
-            sort_action='native', 
+            sort_action='native',
             style_header={'fontWeight': 'bold'},
         )
-    
+
     @app.callback(
         Output('category-key-display', 'children'),
         Input('category-key-dropdown', 'value')
@@ -339,7 +310,6 @@ def create_dash_campaign_clashes(server):
         start = pd.to_datetime(start_date).date()
         end = pd.to_datetime(end_date).date()
 
-        # Risk category and name aggregation
         gms_risk = {}       # gms_id -> set of clash categories
         gms_names = {}      # gms_id -> set of names
 
@@ -356,11 +326,9 @@ def create_dash_campaign_clashes(server):
             for _, row in df_filtered.iterrows():
                 gms_id = row['gms_id']
                 name = row['name']
-
                 gms_risk.setdefault(gms_id, set()).add(label)
                 gms_names.setdefault(gms_id, set()).add(name)
 
-        # Prepare the summary DataFrame
         high_risk_data = [
             {
                 "gms_id": gms_id,
@@ -383,17 +351,13 @@ def create_dash_campaign_clashes(server):
                 {"name": "Categories of the clashes", "id": "clash_categories"},
                 {"name": "Number of clashes", "id": "num_categories"},
             ],
-
             data=df_risk.to_dict('records'),
             style_table={'overflowX': 'auto'},
             style_cell={'textAlign': 'left'},
             page_size=10,
-            sort_action='native', 
+            sort_action='native',
             style_header={'fontWeight': 'bold'},
         )
-
-
-
 
 
 
