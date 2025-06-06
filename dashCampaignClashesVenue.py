@@ -95,11 +95,16 @@ def detect_clashes_by_category(df, clash_categories):
 
 
 
-def create_dash_campaign_clashes(server):
+def create_dash_campaign_clashes_venue(server):
+    url = "https://wacsg2025-my.sharepoint.com/:x:/p/trisha_teo/EXMm4it_HQtPiiDnLuS4iWQB_QX4KRWYNExsu-yRGrK0bg?download=1"
+    response = requests.get(url)
+    response.raise_for_status()
+    csv_data = response.content.decode('utf-8')
 
-    df = load_csv_data()
+    df = pd.read_csv(StringIO(csv_data))
     df['date_created'] = pd.to_datetime(df['date_created'], utc=True)
     df['date_created'] = df['date_created'].dt.date
+    df = df[df['approval_final_status'].str.lower() == 'pending']
 
     not_allowed_clash_categories = {
         "AQC clashes": ("aqc_attendance_am", "aqc_attendance_silent_hours_am"),
@@ -111,7 +116,7 @@ def create_dash_campaign_clashes(server):
 
     clash_dfs = detect_clashes_by_category(df, not_allowed_clash_categories)
 
-    app = Dash(__name__, server=server, routes_pathname_prefix='/appCampaignClashes/')
+    app = Dash(__name__, server=server, routes_pathname_prefix='/appCampaignClashesVenue/')
     app.title = "GovWallet Campaign Clashes"
 
     min_date = min(df['date_created'])
@@ -122,7 +127,7 @@ def create_dash_campaign_clashes(server):
     this_sunday = this_monday + timedelta(days=6) 
 
     app.layout = html.Div([
-        html.H1("GovWallet Campaign Clashes (Finance Manager Version)", style={'textAlign': 'center'}),
+        html.H1("GovWallet Campaign Clashes (Venue Manager Version)", style={'textAlign': 'center'}),
 
         dcc.DatePickerRange(
             id='date-range-clashes',

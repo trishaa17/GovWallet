@@ -8,7 +8,9 @@ from dashDisbursementTrend import create_dash_disbursement_trend
 from dashRejected import create_dash_rejection_rate
 from dashLocationHeatmap import create_dash_heatmap
 from dashCampaignClashes import create_dash_campaign_clashes
+from dashCampaignClashesVenue import create_dash_campaign_clashes_venue
 from dashShiftClashes import create_dash_shift_clashes
+from dashShiftClashesVenue import create_dash_shift_clashes_venue
 from dashPeople import layout_avg, layout_person
 from callbacks_people import register_callbacks, register_person_callbacks
 import dash_bootstrap_components as dbc
@@ -40,7 +42,9 @@ appDisbursementTrend = create_dash_disbursement_trend(server)
 appRejectionRate = create_dash_rejection_rate(server)
 appLocationHeatmap = create_dash_heatmap(server)
 appCampaignClashes = create_dash_campaign_clashes(server)
+appCampaignClashesVenue = create_dash_campaign_clashes_venue(server)
 appShiftClashes = create_dash_shift_clashes(server)
+appShiftClashesVenue = create_dash_shift_clashes_venue(server)
 app3 = Dash(__name__, server=server, url_base_pathname='/app3/', external_stylesheets=[dbc.themes.BOOTSTRAP])
 app3.title = "Volunteer"
 app3.layout = html.Div([
@@ -67,8 +71,10 @@ def index():
         <p><a href="/appDisbursementTrend/">Overall Disbursement Trend (day/week/month)</a></p>
         <p><a href="/appRejectionRate/">Rejection rate (by role/campaign/date)</a></p>
         <p><a href="/appLocationHeatmap/">Location Disbursement Heatmap</a></p>
-        <p><a href="/appCampaignClashes/">Identify Campaign Clashes</a></p>
-        <p><a href="/appShiftClashes/">Identify Shift Timing Clashes</a></p>
+        <p><a href="/appCampaignClashes/">Identify Campaign Clashes (Finance Manager Version)</a></p>
+        <p><a href="/appCampaignClashesVenue/">Identify Campaign Clashes (Venue Manager Version)</a></p>
+        <p><a href="/appShiftClashes/">Identify Shift Timing Clashes (Finance Manager Version)</a></p>
+        <p><a href="/appShiftClashesVenue/">Identify Shift Timing Clashes (Venue Manager Version)</a></p>
         <p><a href="/app3/">Average Shifts</a></p>    
     '''
 

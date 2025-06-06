@@ -23,24 +23,40 @@ def generate_pastel_colors(n):
     random.shuffle(pastel_colors)
     return pastel_colors
 
-def detect_clashes_by_category(df, clash_categories):
-    df['registration_location_id_lower'] = df['registration_location_id'].str.lower()
-    clashes_by_category = {}
 
-    for label, campaigns_to_check in clash_categories.items():
+def detect_clashes_by_keyword(df, category_keywords):
+    # Normalize registration_location_id: lowercase and remove dashes/underscores
+    df['registration_location_id_norm'] = df['registration_location_id'].str.lower().str.replace(r'[-_]', '', regex=True)
+
+    clashes_by_category = {}
+    used_campaigns = set()
+
+    # Process more specific keywords first (order matters)
+    for label, keyword in category_keywords.items():
         clashing = []
 
         grouped = df.groupby(['gms_id', 'date_created'])
+
         for (gms_id, date), group in grouped:
-            campaigns = set(group['registration_location_id_lower'])
-            
-            present_campaigns = campaigns.intersection(campaigns_to_check)
-            if len(present_campaigns) >= 2:
-                clash_rows = group[group['registration_location_id_lower'].isin(present_campaigns)]
+            # Match campaigns for this category, excluding ones already matched to earlier categories
+            matched_campaigns = set(
+                group.loc[
+                    group['registration_location_id_norm'].str.contains(keyword) &
+                    ~group['registration_location_id_norm'].isin(used_campaigns),
+                    'registration_location_id_norm'
+                ]
+            )
+
+            if len(matched_campaigns) >= 2:
+                clash_rows = group[group['registration_location_id_norm'].isin(matched_campaigns)]
                 clashing.append(clash_rows)
 
         if clashing:
-            clashes_by_category[label] = pd.concat(clashing).drop_duplicates()
+            result_df = pd.concat(clashing).drop_duplicates()
+            clashes_by_category[label] = result_df
+
+            # Track used campaigns to prevent overlaps
+            used_campaigns.update(result_df['registration_location_id_norm'].unique())
         else:
             clashes_by_category[label] = pd.DataFrame(columns=df.columns)
 
@@ -54,48 +70,19 @@ def create_dash_shift_clashes(server):
     # csv_data = response.content.decode('utf-8')
 
     # df = pd.read_csv(StringIO(csv_data), parse_dates=['date_created'])
+    
     df = load_csv_data()
     df['date_created'] = pd.to_datetime(df['date_created'], utc=True)
     df['date_created'] = df['date_created'].dt.date
 
-    not_allowed_clash_categories = {
-        "Silent Hours AM": ("aqc_attendance_silent_hours_am", 
-                            "wac_attendance_silent_hours_am", 
-                            "khall_attendance_silent_hours_am", 
-                            "sen_attendance_silent_hours_am", 
-                            "airpt_attendance_silent_hours_am"),
-        "AM": ("aqc_attendance_am",
-               "wac_attendance_am",
-                "khall_attendance_am",
-                "itee_attendance_am",
-                "nexus_attendance_am",
-                "oth-attendance-am",
-                "congr-attendance-am",
-                "oc-attendance-am",
-                "hotel1_attendance_am",
-                "hotel2_attendance_am",
-                "hotel3_attendance_am",
-                "airpt-attendance-am"),
-        "PM": ("aqc_attendance_pm",
-               "wac_attendance_pm",
-               "khall_attendance_pm",
-               "itee_attendance_pm",
-                "nexus_attendance_pm",
-                "oth-attendance-pm",
-                "congr-attendance-pm",
-                "oc-attendance-pm",
-                "hotel1_attendance_pm",
-                "hotel2_attendance_pm",
-                "hotel3_attendance_pm",
-                "airpt-attendance-pm"),
-        "Silent Hour 11pm - 7am": ("aqc_attendance_silent_hour_11pm_7am",
-                                   "wac_attendance_silent_hour_11pm_7am",
-                                   "khall_attendance_silent_hour_11pm_7am", 
-                                   "airpt_attendance_silent_hour_11pm_7am"),
+    category_keywords = {
+        "Silent Hour 11pm - 7am": "silenthour11pm7am",
+        "Silent Hours AM": "silenthoursam",
+        "AM": "attendanceam",
+        "PM": "attendancepm",
     }
 
-
-    clash_dfs = detect_clashes_by_category(df, not_allowed_clash_categories)
+    clash_dfs = detect_clashes_by_keyword(df, category_keywords)
 
     app = Dash(__name__, server=server, routes_pathname_prefix='/appShiftClashes/')
     app.title = "GovWallet Shift Timing Clashes"
@@ -109,7 +96,7 @@ def create_dash_shift_clashes(server):
     this_sunday = this_monday + timedelta(days=6) 
 
     app.layout = html.Div([
-        html.H1("GovWallet Shift Timing Clashes", style={'textAlign': 'center'}),
+        html.H1("GovWallet Shift Timing Clashes (Finance Manager Version)", style={'textAlign': 'center'}),
 
         dcc.DatePickerRange(
             id='date-range-clashes',
@@ -127,8 +114,8 @@ def create_dash_shift_clashes(server):
             html.Label("Filter by Name:", style={'marginLeft': '20px'}),
             dcc.Dropdown(id='filter-name', options=[], multi=True, placeholder='Select Name(s)'),
 
-            html.Label("Filter by Registration Location ID:", style={'marginLeft': '20px'}),
-            dcc.Dropdown(id='filter-location-id', options=[], multi=True, placeholder='Select Location ID(s)'),
+            html.Label("Filter by Campaign:", style={'marginLeft': '20px'}),
+            dcc.Dropdown(id='filter-location-id', options=[], multi=True, placeholder='Select Campaign(s)'),
         ], style={'marginTop': '20px', 'marginBottom': '20px'}),
 
 
@@ -143,7 +130,7 @@ def create_dash_shift_clashes(server):
         html.Label("Key: View Campaigns for Selected Clash Timing:", style = {'fontWeight': 'bold'}),
         dcc.Dropdown(
             id='category-key-dropdown',
-            options=[{'label': key, 'value': key} for key in not_allowed_clash_categories.keys()],
+            options=[{'label': key, 'value': key} for key in category_keywords.keys()],
             placeholder='Select a category to view its campaign key',
             style={'marginBottom': '10px'}
         ),
