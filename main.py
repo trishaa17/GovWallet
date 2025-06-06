@@ -1,4 +1,5 @@
 from flask import Flask, jsonify
+from dash import Dash, dcc, html, Input, Output
 from importlib.machinery import SourceFileLoader
 from dashManpowerCount import create_dash_number_of_roles
 from dashIndivAmount import create_dash_individual_amount
@@ -8,6 +9,10 @@ from dashRejected import create_dash_rejection_rate
 from dashLocationHeatmap import create_dash_heatmap
 from dashCampaignClashes import create_dash_campaign_clashes
 from dashShiftClashes import create_dash_shift_clashes
+from dashPeople import layout_avg, layout_person
+from callbacks_people import register_callbacks, register_person_callbacks
+import dash_bootstrap_components as dbc
+from urllib.parse import unquote
 import loadcsv
 import threading
 import time
@@ -36,6 +41,21 @@ appRejectionRate = create_dash_rejection_rate(server)
 appLocationHeatmap = create_dash_heatmap(server)
 appCampaignClashes = create_dash_campaign_clashes(server)
 appShiftClashes = create_dash_shift_clashes(server)
+app3 = Dash(__name__, server=server, url_base_pathname='/app3/', external_stylesheets=[dbc.themes.BOOTSTRAP])
+app3.title = "Volunteer"
+app3.layout = html.Div([
+    dcc.Location(id='url', refresh=False),
+    html.Div(id='page-content')
+])
+register_callbacks(app3)
+register_person_callbacks(app3)
+@app3.callback(Output('page-content', 'children'), Input('url', 'pathname'))
+
+def display_page(pathname):
+    if pathname.startswith('/app3/person/'):
+        name = pathname.split('/')[-1]
+        return layout_person(name)
+    return layout_avg()
 
 @server.route('/')
 def index():
@@ -49,8 +69,7 @@ def index():
         <p><a href="/appLocationHeatmap/">Location Disbursement Heatmap</a></p>
         <p><a href="/appCampaignClashes/">Identify Campaign Clashes</a></p>
         <p><a href="/appShiftClashes/">Identify Shift Timing Clashes</a></p>
-       
-       
+        <p><a href="/app3/">Average Shifts</a></p>    
     '''
 
 @server.route('/refresh-cache')
