@@ -10,6 +10,7 @@ from urllib.parse import unquote
 import dash_bootstrap_components as dbc
 from dash_iconify import DashIconify
 from graphs_people import DisbursementDashboardGraphs
+from navigation_menu import create_sidebar_menu
 
 app = None  # global placeholder
 url = "https://wacsg2025-my.sharepoint.com/:x:/p/trisha_teo/EfFwqNRlqjdKgUnvBWe53SEBKKJA9yK7RomjADmwfuT6iQ?download=1"
@@ -132,47 +133,157 @@ def get_data_with_conflicts():
 
 def layout_avg():
     df = get_data()
-    daily_shifts = df.groupby(['name', 'payout_date'])['shift_count'].sum().reset_index()
-    avg_shifts = daily_shifts.groupby('name')['shift_count'].mean().reset_index(name='avg_shifts_per_day')
-    
+    df1['name'] = df1['name'].str.strip().str.upper()
+
+    # Normalize names in df as well
+    df['name'] = df['name'].str.strip().str.upper()
+
+    # Get unique people and their identity info
+    people = df1.drop_duplicates(subset='name')[['name', 'gms_id', 'badge_id', 'gms_role_name']].copy()
+
     return html.Div([
-        html.H2("Volunteer Finder"),
-        dcc.Dropdown(
-            id='name-filter-bottom',
-            options=[{'label': n, 'value': n} for n in sorted(df['name'].unique()) if pd.notna(n)],
-            placeholder="Search or Select Name(s)",
-            multi=True,
-            style={'marginTop': '10px', 'marginBottom': '10px'}
-        ),
-        dcc.RadioItems(
-            id='avg-sort-order',
-            options=[
-                {'label': 'Descending', 'value': 'desc'},
-                {'label': 'Ascending', 'value': 'asc'}
-            ],
-            value='desc',
-            labelStyle={'display': 'inline-block', 'marginRight': '10px'}
-        ),
-        dash_table.DataTable(
-            id='avg-shift-table',
-            columns=[
-                {"name": "Name", "id": "link", "presentation": "markdown", "type": "text"},
-                {"name": "Avg Shifts/Day", "id": "avg_shifts_per_day", "type": "numeric", "format": Format(precision=2, scheme=Scheme.fixed)}
-            ],
-            markdown_options={"html": True},
-            data=[
-                {
-                    "link": f"[{row['name']}](/app3/person/{urllib.parse.quote(str(row['name']))})",
-                    "avg_shifts_per_day": row['avg_shifts_per_day']
-                }
-                for _, row in avg_shifts.iterrows()
-                if pd.notna(row['name'])
-            ],
-            style_cell={'textAlign': 'left'},
-            page_size=15
-        ),
-        html.Hr()
-    ])
+        html.Div([
+                html.H2("Volunteer Finder", style={
+                    'color': 'Black', 'textAlign': 'center',
+                    'fontSize': '2.5rem', 'fontWeight': 'bold',
+                    'marginBottom': '30px', 'fontFamily': 'Arial, sans-serif'
+                }),            
+            html.Div([
+                # Row: Name + Filter Toggle
+                html.Div([
+                    dcc.Dropdown(
+                        id='name-filter-bottom',
+                        options=[{'label': n.title(), 'value': n} for n in sorted(people['name'].unique())],
+                        placeholder="Search Name(s)",
+                        multi=True,
+                        style={'width': '100%', 'flex': 1, 'marginRight': '10px'}
+                    ),
+                    html.Button(
+                        DashIconify(icon="carbon:filter", width=20),
+                        id='toggle-advanced-filters',
+                        n_clicks=0,
+                    style={
+                        'backgroundColor': '#4682B4',
+                        'color': 'white',
+                        'border': 'none',
+                        'borderRadius': '50%',
+                        'width': '45px',
+                        'height': '45px',
+                        'padding': '0',
+                        'display': 'flex',
+                        'alignItems': 'center',
+                        'justifyContent': 'center',
+                        'cursor': 'pointer'
+                    }
+                    )
+                ], style={'display': 'flex',
+                            'alignItems': 'center',       # ✅ aligns both vertically in the middle
+                            'gap': '10px',
+                            'marginBottom': '10px'}),
+
+                # Advanced filter inputs (initially hidden)
+                html.Div([
+                    dcc.Input(
+                        id='gms-id-input',
+                        type='text',
+                        placeholder='GMS ID',
+                        style={'marginRight': '10px', 'width': '150px'}
+                    ),
+                    dcc.Input(
+                        id='badge-id-input',
+                        type='text',
+                        placeholder='Badge ID',
+                        style={'marginRight': '10px', 'width': '150px'}
+                    ),
+                    dcc.Input(
+                        id='role-input',
+                        type='text',
+                        placeholder='Role',
+                        style={'marginRight': '10px', 'width': '180px'}
+                    ),
+                    html.Button("Apply", id='identity-filter-btn', n_clicks=0, style={
+                        'backgroundColor': '#4682B4',
+                        'color': 'white',
+                        'padding': '10px 16px',
+                        'border': 'none',
+                        'borderRadius': '8px',
+                        'cursor': 'pointer',
+                        'fontWeight': '500'
+                    })
+                ], id='advanced-filter-container', style={'display': 'none', 'flexWrap': 'wrap', 'marginBottom': '20px'})
+
+            ], style={
+                'backgroundColor': 'white', 'borderRadius': '15px',
+                'padding': '20px', 'marginBottom': '30px',
+                'border': '1px solid rgba(255,255,255,0.8)'
+            }),
+
+            html.Div([
+                dash_table.DataTable(
+                    id='identity-table',
+                    columns=[
+                        {"name": "Name", "id": "link", "presentation": "markdown"},
+                        {"name": "GMS ID", "id": "gms_id"},
+                        {"name": "Badge ID", "id": "badge_id"},
+                        {"name": "Role", "id": "gms_role_name"}
+                    ],
+                    markdown_options={"html": True},
+                    data=[
+                        {
+                            "link": f"[{row['name'].title()}](/app3/person/{urllib.parse.quote(str(row['name']))})",
+                            "gms_id": row['gms_id'] if pd.notna(row['gms_id']) else "—",
+                            "badge_id": row['badge_id'] if pd.notna(row['badge_id']) else "—",
+                            "gms_role_name": row['gms_role_name'] if pd.notna(row['gms_role_name']) else "—"
+                        }
+                        for _, row in people.iterrows()
+                    ],
+                    style_cell={
+                        'textAlign': 'left',
+                        'backgroundColor': 'rgba(255,255,255,1)',
+                        'color': '#333',
+                        'fontSize': '14px',
+                        'fontFamily': 'Arial, sans-serif',
+                        'border': '1px solid rgba(200,200,200,0.8)',
+                        'padding': '12px'
+                    },
+                    style_header={
+                        'backgroundColor': 'rgba(70,130,180,1)',
+                        'color': 'white',
+                        'fontWeight': 'bold',
+                        'fontSize': '16px',
+                        'textAlign': 'center',
+                        'border': '1px solid rgba(255,255,255,0.8)'
+                    },
+                    style_data_conditional=[
+                        {
+                            'if': {'row_index': 'odd'},
+                            'backgroundColor': 'rgba(240,248,255,0.8)'
+                        }
+                    ],
+                    page_size=15,
+                    style_table={'overflowX': 'auto'}
+                )
+            ], style={
+                'borderRadius': '15px',
+                'overflow': 'hidden',
+                'boxShadow': '0 4px 8px rgba(0,0,0,0.1)'
+            }),
+            html.Hr(style={'border': '1px solid rgba(255,255,255,0.3)', 'marginTop': '30px'})
+        ], style={
+            'padding': '40px',
+            'maxWidth': '1200px',
+            'margin': '0 auto'
+        })
+    ], style={
+        'backgroundImage': 'url(https://images.unsplash.com/photo-1454117096348-e4abbeba002c?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D)',
+        'backgroundSize': 'cover',
+        'backgroundPosition': 'center',
+        'backgroundAttachment': 'fixed',
+        'minHeight': '100vh',
+        'backgroundRepeat': 'no-repeat'
+    })
+
+
 
 def layout_person(name):
     name = unquote(name)
@@ -456,7 +567,7 @@ def layout_person(name):
                 }),
             ], style={
                 'width': '100%',
-                'background': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                'background-color': 'rgba(100, 140, 180, 0.9)',
                 'color': 'white',
                 'padding': '25px',
                 'borderRadius': '15px',
@@ -734,6 +845,7 @@ def layout_person(name):
                 html.Span("← ", style={'marginRight': '5px'}),
                 "Back to Volunteer Finder"
             ], href="/app3/", style={
+                'background' : 'white',
                 'color': '#3498db',
                 'textDecoration': 'none',
                 'fontSize': '16px',
@@ -747,9 +859,13 @@ def layout_person(name):
         ], style={'textAlign': 'center'})
     ], style={
         'maxWidth': '12000px',
+        'backgroundSize': 'cover',
         'margin': '0 auto',
         'padding': '20px',
-'backgroundColor': '#e9ecef',  # light gray-blue
-        'minHeight': '100vh'
+        'backgroundImage': 'url("https://images.unsplash.com/photo-1454117096348-e4abbeba002c?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D")',
+        'minHeight': '100vh',
+        'backgroundRepeat': 'no-repeat',
+        'background-attachment': 'fixed',
+        'background-position': 'center center'
     })
 
