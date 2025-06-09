@@ -36,84 +36,250 @@ def create_dash_individual_amount(server):
     end_of_week = start_of_week + timedelta(days=6)
 
     app.layout = html.Div([
-        html.H1("Individual Disbursement Dashboard", style={'textAlign': 'center'}),
-
-        dcc.Dropdown(
-            id='gmsid-filter',
-            options=[
-                {'label': str(gms_id), 'value': gms_id}
-                for gms_id in sorted(df['gms_id'].unique())
-            ],
-            placeholder="Select GMS ID(s)",
-            multi=True
-        ),
-
-        dcc.RadioItems(
-            id='date-mode',
-            options=[
-                {'label': 'Single Date', 'value': 'single'},
-                {'label': 'Date Range', 'value': 'range'}
-            ],
-            value='range',
-            labelStyle={'display': 'inline-block', 'marginRight': '15px'},
-            style={'marginTop': '10px'}
-        ),
-
+        # Header
         html.Div([
-            dcc.DatePickerSingle(
-                id='date-single',
-                min_date_allowed=agg_df['date_created'].min(),
-                max_date_allowed=agg_df['date_created'].max(),
-                date=today
-            )
-        ], id='date-single-container', style={'display': 'none'}),
-
+            html.H1("Individual Disbursement Dashboard", 
+                    style={
+                        'margin': '0',
+                        'fontSize': '24px',
+                        'fontWeight': '600',
+                        'color': '#1f2937'
+                    })
+        ], style={
+            'padding': '20px 40px',
+            'backgroundColor': '#ffffff',
+            'borderBottom': '1px solid #e5e7eb'
+        }),
+        
+        # Main content container
         html.Div([
-            dcc.DatePickerRange(
-                id='date-range',
-                min_date_allowed=agg_df['date_created'].min(),
-                max_date_allowed=agg_df['date_created'].max(),
-                start_date=start_of_week,
-                end_date=end_of_week
-            )
-        ], id='date-range-container', style={'display': 'block'}),
+            # Top controls section
+            html.Div([
+                # Left side - GMS ID dropdown and checkbox
+                html.Div([
+                    dcc.Dropdown(
+                        id='gmsid-filter',
+                        options=[
+                            {'label': str(gms_id), 'value': gms_id}
+                            for gms_id in sorted(df['gms_id'].unique())
+                        ],
+                        placeholder="Select GMS ID(s)",
+                        multi=True,
+                        style={
+                            'width': '300px',
+                            'fontSize': '14px'
+                        }
+                    ),
+                    # Checkbox filter moved here
+                    html.Div([
+                        dcc.Checklist(
+                            id='amount-check',
+                            options=[{'label': 'Show only entries with total amount > 60', 'value': 'over60'}],
+                            value=[],
+                            style={
+                                'marginTop': '10px',
+                                'fontSize': '14px',
+                                'color': '#374151'
+                            }
+                        )
+                    ])
+                ], style={'flex': '1'}),
+                
+                # Right side - Date controls
+                html.Div([
+                    # Date mode radio buttons
+                    dcc.RadioItems(
+                        id='date-mode',
+                        options=[
+                            {'label': 'Single Date', 'value': 'single'},
+                            {'label': 'Date Range', 'value': 'range'}
+                        ],
+                        value='range',
+                        labelStyle={
+                            'display': 'inline-block', 
+                            'marginRight': '15px',
+                            'fontSize': '14px',
+                            'color': '#6b7280'
+                        },
+                        style={'marginBottom': '10px'}
+                    ),
+                    
+                    # Date pickers container
+                    html.Div([
+                        # Single date picker
+                        html.Div([
+                            dcc.DatePickerSingle(
+                                id='date-single',
+                                min_date_allowed=agg_df['date_created'].min(),
+                                max_date_allowed=agg_df['date_created'].max(),
+                                date=today,
+                                display_format='DD/MM/YYYY', 
+                                clearable=True,
+                                with_portal=True
+                            )
+                        ], id='date-single-container', style={'display': 'none'}),
+                        
+                        
+                        # Date range picker
+                        html.Div([
+                            dcc.DatePickerRange(
+                                id='date-range',
+                                min_date_allowed=agg_df['date_created'].min(),
+                                max_date_allowed=agg_df['date_created'].max(),
+                                start_date=start_of_week,
+                                end_date=end_of_week,
+                                display_format='DD/MM/YYYY',  # matches the screenshot
+                                clearable=True,
+                                with_portal=True
+                            )
 
-        dcc.Checklist(
-            id='amount-check',
-            options=[{'label': 'Show only entries with total amount > 60', 'value': 'over60'}],
-            value=[],
-            style={'marginTop': '10px'}
-        ),
-
-        html.H2("Amount earned by each individual for each day", style={'textAlign': 'center'}),
-
-        dash_table.DataTable(
-            id='result-table',
-            columns=[
-                {'name': 'GMS ID', 'id': 'gms_id'},
-                {'name': 'Names', 'id': 'name'},
-                {'name': 'Date Created', 'id': 'date_created'},
-                {'name': 'Total Amount', 'id': 'amount'},
-            ],
-            page_size=20,
-            style_table={'overflowX': 'auto'},
-            sort_action='native',
-            style_cell={'textAlign': 'left'},
-            style_data_conditional=[
-                {
-                    'if': {'filter_query': '{amount} > 60', 'column_id': 'amount'},
-                    'backgroundColor': '#ffcccc',
-                    'color': 'black'
-                }
-            ],
-        ),
-
-        html.Div(dcc.Graph(id='amount-bar-chart'), id='bar-chart-container', style={'display': 'none'}),
-
-        html.H2("Total Amount Earned per individual for Selected Period", style={'textAlign': 'center'}),
-
-        html.Div(dcc.Graph(id='amount-line-chart'), id='line-chart-container', style={'display': 'none'}),
-    ])
+                        ], id='date-range-container', style={'display': 'block'})
+                    ])
+                ], style={
+                    'display': 'flex',
+                    'flexDirection': 'column',
+                    'alignItems': 'flex-end'
+                })
+            ], style={
+                'display': 'flex',
+                'justifyContent': 'space-between',
+                'alignItems': 'flex-start',
+                'marginBottom': '20px',
+                'padding': '0 20px'
+            }),
+            
+            # Table section
+            html.Div([
+                html.H2("Amount earned by each individual for each day", 
+                    style={
+                        'textAlign': 'center',
+                        'fontSize': '18px',
+                        'fontWeight': '600',
+                        'color': '#1f2937',
+                        'marginBottom': '20px'
+                    }),
+                
+                dash_table.DataTable(
+                    id='result-table',
+                    columns=[
+                        {'name': 'GMS ID', 'id': 'gms_id'},
+                        {'name': 'Names', 'id': 'name'},
+                        {'name': 'Date Created', 'id': 'date_created'},
+                        {'name': 'Total Amount', 'id': 'amount'},
+                    ],
+                    page_size=20,
+                    style_table={
+                        'overflowX': 'auto',
+                        'border': '1px solid #e5e7eb',
+                        'borderRadius': '8px'
+                    },
+                    sort_action='native',
+                    style_header={
+                        'backgroundColor': "#c4b8fa",
+                        'fontWeight': '600',
+                        'fontSize': '14px',
+                        'color': '#374151',
+                        'border': '1px solid #e5e7eb',
+                        'textAlign': 'left'
+                    },
+                    style_cell={
+                        'textAlign': 'left',
+                        'padding': '12px',
+                        'fontSize': '14px',
+                        'color': '#374151',
+                        'border': '1px solid #e5e7eb'
+                    },
+                    style_data={
+                        'backgroundColor': '#F1F1F1FF',
+                        'border': '1px solid #e5e7eb'
+                    },
+                    style_data_conditional=[
+                        {
+                            'if': {'filter_query': '{amount} > 60', 'column_id': 'amount'},
+                            'backgroundColor': "#F1F1F1FF",
+                            'color': '#374151',
+                            'fontWeight': '600'
+                        },
+                        {
+                            'if': {'row_index': 'odd'},
+                            'backgroundColor': '#ddd6fe'
+                        }
+                    ],
+                )
+            ], style={
+                'padding': '0 20px',
+                'marginBottom': '40px'
+            }),
+            
+            # Bar chart container 
+            html.Div([
+                html.H2("Total Amount Earned per individual for Selected Period", 
+                    style={
+                        'textAlign': 'center',
+                        'fontSize': '18px',
+                        'fontWeight': '600',
+                        'color': '#1f2937',
+                        'marginBottom': '20px'
+                    }),
+                
+                dcc.Graph(
+                    id='amount-bar-chart',
+                    config={
+                        'displayModeBar': False,
+                        'plotlyServerURL': "https://chart-studio.plotly.com"
+                    },
+                    style={'height': '300px'},
+                    figure={
+                        'data': [],
+                        'layout': {
+                            'plot_bgcolor': 'rgba(0,0,0,0)',
+                            'paper_bgcolor': 'rgba(0,0,0,0)',
+                            'colorway': ['#5A6ACF']
+                        }
+                    }
+                )
+            ], id='bar-chart-container', 
+            style={
+                'display': 'none',
+                'padding': '0 20px',
+                'marginBottom': '40px'  
+            }),
+            
+            # Line chart section
+            html.Div([
+                html.H2("Total Amount Earned per individual for Selected Period", 
+                    style={
+                        'textAlign': 'center',
+                        'fontSize': '18px',
+                        'fontWeight': '600',
+                        'color': '#1f2937',
+                        'marginBottom': '20px'
+                    }),
+                
+                html.Div(dcc.Graph(
+                    id='amount-line-chart',
+                    config={'displayModeBar': False},
+                    style={'height': '300px'}
+                ), id='line-chart-container', style={'display': 'none'})
+            ], style={
+                'padding': '0 20px',
+                'marginBottom': '40px'
+            })
+            
+        ], style={
+            'padding': '30px 20px',
+            'backgroundColor': '#ffffff',
+            'minHeight': 'calc(100vh - 80px)'
+        })
+        
+    ], style={
+        'backgroundImage': 'url("https://images.unsplash.com/photo-1454117096348-e4abbeba002c?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D")',
+        'backgroundSize': 'cover',
+        'backgroundRepeat': 'no-repeat',
+        'backgroundAttachment': 'fixed', 
+        'backgroundPosition': 'center',
+        'fontFamily': '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+    })
 
     @app.callback(
         Output('date-single-container', 'style'),
@@ -193,6 +359,14 @@ def create_dash_individual_amount(server):
             labels={'label': 'GMS ID (Date)', 'amount': 'Total Amount'}
         ) if 'over60' in amount_filter else {}
 
+        if bar_fig:
+            bar_fig.update_traces(marker_color='#5A6ACF')
+            bar_fig.update_layout(
+                plot_bgcolor='#E6E8EC',
+                paper_bgcolor='#E6E8EC'
+            )
+
+
         bar_style = {'display': 'block'} if 'over60' in amount_filter else {'display': 'none'}
 
         # Line Chart: per gms_id across period
@@ -212,6 +386,13 @@ def create_dash_individual_amount(server):
             title='Total Amount per GMS ID for Selected Period',
             labels={'gms_id_name': 'GMS ID', 'amount': 'Total Amount'}
         )
+
+        line_fig.update_traces(line_color='#5A6ACF', marker=dict(color='#5A6ACF'))
+        line_fig.update_layout(
+            plot_bgcolor='#E6E8EC',
+            paper_bgcolor='#E6E8EC'
+        )
+
 
         return table_data, bar_style, bar_fig, {'display': 'block'}, line_fig
 

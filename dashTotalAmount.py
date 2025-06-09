@@ -25,91 +25,176 @@ def create_dash_total_amount(server):
     max_date = df['payout_date'].max().date()
 
     app.layout = html.Div([
-        html.H1("Total Disbursement Dashboard (by role/campaign)", style={'textAlign': 'center'}),
 
-        html.H2("Select Date Mode"),
-        dcc.RadioItems(
-            id='date-mode',
-            options=[
-                {'label': 'Single Date', 'value': 'single'},
-                {'label': 'Date Range', 'value': 'range'}
-            ],
-            value='range',  # default to range mode
-            labelStyle={'display': 'inline-block', 'marginRight': '15px'}
-        ),
-
+        # Header (kept white for contrast)
         html.Div([
-            dcc.DatePickerSingle(
-                id='single-date-picker',
-                min_date_allowed=min_date,
-                max_date_allowed=max_date,
-                placeholder='Select a date',
-                display_format='YYYY-MM-DD',
-            )
-        ], id='single-date-container', style={'display': 'none'}),  # hidden by default
+            html.H1("Total Disbursement Dashboard (by role/campaign)", 
+                    style={
+                        'margin': '0',
+                        'fontSize': '24px',
+                        'fontWeight': '600',
+                        'color': '#1f2937'
+                    })
+        ], style={
+            'padding': '20px 40px',
+            'backgroundColor': '#ffffff',
+            'borderBottom': '1px solid #e5e7eb'
+        }),
 
-        html.Div([
-            dcc.DatePickerRange(
-                id='range-date-picker',
-                min_date_allowed=min_date,
-                max_date_allowed=max_date,
-                display_format='YYYY-MM-DD',
-                start_date=min_date,  # default start date
-                end_date=max_date,    # default end date
-            )
-        ], id='range-date-container', style={'display': 'block'}),  # visible by default
-
-
+        # Component 1: Select Date (background #E6E8EC)
         html.Div([
             html.Div([
-                html.H2("Filter by Role (Multi-select)"),
-                dcc.Dropdown(
-                    id='role-filter',
-                    options=[{'label': role, 'value': role} for role in sorted(df['gms_role_name'].dropna().unique())],
-                    multi=True,
-                    placeholder='Select roles...',
-                    style={'marginBottom': '20px'}
-                ),
-            ], style={'width': '48%', 'display': 'inline-block'}),
+                html.Div([
+                    html.H2("Select Date Mode", style={'fontSize': '16px', 'color': '#374151'}),
+                    dcc.RadioItems(
+                        id='date-mode',
+                        options=[
+                            {'label': 'Single Date', 'value': 'single'},
+                            {'label': 'Date Range', 'value': 'range'}
+                        ],
+                        value='range',
+                        labelStyle={'display': 'inline-block', 'marginRight': '15px', 'fontSize': '14px', 'color': '#4b4b7d'},
+                        style={'marginBottom': '10px'}
+                    ),
+                    html.Div([
+                        dcc.DatePickerSingle(
+                            id='single-date-picker',
+                            min_date_allowed=min_date,
+                            max_date_allowed=max_date,
+                            placeholder='Select a date',
+                            display_format='YYYY-MM-DD',
+                            with_portal=True
+                        )
+                    ], id='single-date-container', style={'display': 'none'}),
+                    html.Div([
+                        dcc.DatePickerRange(
+                            id='range-date-picker',
+                            min_date_allowed=min_date,
+                            max_date_allowed=max_date,
+                            start_date=min_date,
+                            end_date=max_date,
+                            display_format='YYYY-MM-DD',
+                            with_portal=True
+                        )
+                    ], id='range-date-container', style={'display': 'block'})
+                ], style={'flex': '1'}),
+            ], style={'display': 'flex', 'padding': '30px 40px'})
+        ], style={
+            'display': 'flex',
+            'justifyContent': 'flex-start',
+            'alignItems': 'flex-start',
+            'marginBottom': '20px',
+            'padding': '0 20px'
+        }),
 
+        # Component 2: Overview + Sort + View Payout + Graph (background #E6E8EC)
+        html.Div([
+
+            # Disbursement Overview heading
             html.Div([
-                html.H2("Filter by Campaign (Multi-select)"),
-                dcc.Dropdown(
-                    id='campaign-filter',
-                    options=[{'label': camp, 'value': camp} for camp in sorted(df['registration_location_id'].dropna().unique())],
-                    multi=True,
-                    placeholder='Select campaigns...',
-                    style={'marginBottom': '20px'}
-                ),
-            ], style={'width': '48%', 'display': 'inline-block', 'float': 'right'}),
-        ]),
+                html.H2("Total Disbursement Overview", 
+                    style={
+                        'textAlign': 'center',
+                        'fontSize': '20px',
+                        'fontWeight': '600',
+                        'color': '#1f2937',
+                        'marginBottom': '10px',        # smaller margin below text
+                        'paddingBottom': '10px',       # space below text before line
+                        'borderBottom': '1px solid #ffffff',  # thicker white line
+                        'marginLeft': 'auto',
+                        'marginRight': 'auto'
+                    })
+            ]),
 
-        html.H2("View Payouts By"),
-        dcc.Dropdown(
-            id='group-by-selector',
-            options=[
-                {'label': 'Role', 'value': 'gms_role_name'},
-                {'label': 'Campaign', 'value': 'registration_location_id'}
-            ],
-            value='gms_role_name',
-            clearable=False,
-            style={'width': '50%', 'marginBottom': '20px'}
-        ),
+            # Sorting, grouping, and filters
+            html.Div([
+                html.Div([
 
-        html.H2("Sort by Amount"),
-        dcc.RadioItems(
-            id='sort-order',
-            options=[
-                {'label': 'Descending', 'value': 'desc'},
-                {'label': 'Ascending', 'value': 'asc'},
-            ],
-            value='desc',
-            labelStyle={'display': 'inline-block', 'marginRight': '15px'},
-            style={'marginBottom': '20px'}
-        ),
+                    # Sort by amount
+                    html.Div([
+                        html.H2("Sort by Amount", style={'fontSize': '16px', 'color': '#374151'}),
+                        dcc.RadioItems(
+                            id='sort-order',
+                            options=[
+                                {'label': 'Ascending', 'value': 'asc'},
+                                {'label': 'Descending', 'value': 'desc'},
+                            ],
+                            value='desc',
+                            labelStyle={'display': 'block', 'marginBottom': '8px', 'fontSize': '14px', 'color': '#4b4b7d'}
+                        )
+                    ], style={'minWidth': '180px', 'marginRight': '20px'}),
 
-        dcc.Graph(id='payout-bar-chart')
-    ])
+                    # View payout by
+                    html.Div([
+                        html.H2("View Payouts By", style={'fontSize': '16px', 'color': '#374151'}),
+                        dcc.Dropdown(
+                            id='group-by-selector',
+                            options=[
+                                {'label': 'Role', 'value': 'gms_role_name'},
+                                {'label': 'Campaign', 'value': 'registration_location_id'}
+                            ],
+                            value='gms_role_name',
+                            clearable=False,
+                            style={'width': '200px', 'fontSize': '14px'}
+                        ),
+                    ], style={'marginRight': '20px'}),
+
+                    # Role filter
+                    html.Div([
+                        html.H2("Role Filter", style={'fontSize': '16px', 'color': '#374151'}),
+                        dcc.Dropdown(
+                            id='role-filter',
+                            options=[{'label': role, 'value': role} for role in sorted(df['gms_role_name'].dropna().unique())],
+                            multi=True,
+                            placeholder="Select roles...",
+                            style={'width': '220px', 'fontSize': '14px'}
+                        )
+                    ], style={'marginRight': '20px'}),
+
+                    # Campaign filter
+                    html.Div([
+                        html.H2("Campaign Filter", style={'fontSize': '16px', 'color': '#374151'}),
+                        dcc.Dropdown(
+                            id='campaign-filter',
+                            options=[{'label': camp, 'value': camp} for camp in sorted(df['registration_location_id'].dropna().unique())],
+                            multi=True,
+                            placeholder="Select campaigns...",
+                            style={'width': '220px', 'fontSize': '14px'}
+                        )
+                    ])
+
+                ], style={
+                    'display': 'flex',
+                    'flexWrap': 'wrap',
+                    'alignItems': 'flex-start',
+                    'gap': '20px',
+                    'justifyContent': 'center',
+                    'margin': '0 auto',
+                    'maxWidth': '1000px'
+                })
+            ], style={'paddingBottom': '30px'}),
+
+
+            # Graph
+            html.Div([
+                dcc.Graph(id='payout-bar-chart', config={'displayModeBar': False})
+            ], style={'backgroundColor': '#ffffff', 'padding': '10px', 'borderRadius': '8px'}),
+
+        ], style={
+            'backgroundColor': '#E6E8EC',
+            'margin': '20px',
+            'borderRadius': '12px',
+            'padding': '30px 40px 40px 40px'
+        }),
+
+    ], style={
+        'backgroundColor': '#f9fafb',
+        'fontFamily': '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+        'minHeight': '100vh',
+        'paddingBottom': '40px'
+    })
+
+
 
     @app.callback(
         Output('single-date-container', 'style'),
@@ -121,6 +206,30 @@ def create_dash_total_amount(server):
             return {'display': 'block'}, {'display': 'none'}
         else:
             return {'display': 'none'}, {'display': 'block'}
+
+    # Callback for role filter toggle
+    @app.callback(
+        Output('role-filter-dropdown-container', 'style'),
+        Input('role-filter-toggle-btn', 'n_clicks'),
+        prevent_initial_call=True
+    )
+    def toggle_role_filter(n_clicks):
+        if n_clicks and n_clicks % 2 == 1:
+            return {'display': 'block', 'position': 'absolute', 'top': '100%', 'left': '0', 'zIndex': '1000'}
+        else:
+            return {'display': 'none', 'position': 'absolute', 'top': '100%', 'left': '0', 'zIndex': '1000'}
+
+    # Callback for campaign filter toggle
+    @app.callback(
+        Output('campaign-filter-dropdown-container', 'style'),
+        Input('campaign-filter-toggle-btn', 'n_clicks'),
+        prevent_initial_call=True
+    )
+    def toggle_campaign_filter(n_clicks):
+        if n_clicks and n_clicks % 2 == 1:
+            return {'display': 'block', 'position': 'absolute', 'top': '100%', 'left': '0', 'zIndex': '1000'}
+        else:
+            return {'display': 'none', 'position': 'absolute', 'top': '100%', 'left': '0', 'zIndex': '1000'}
 
     @app.callback(
         Output('payout-bar-chart', 'figure'),
@@ -188,11 +297,38 @@ def create_dash_total_amount(server):
             grouped,
             x=group_by,
             y='total_paid',
-            color=group_by,
+            color=group_by,  # still coloring by group if desired
             title=title,
-            labels={group_by: group_by.replace('_', ' ').title(), 'total_paid': 'Total Paid (SGD)', 'registration_location_id': 'Campaign'},
+            labels={
+                group_by: group_by.replace('_', ' ').title(),
+                'total_paid': 'Total Paid (SGD)',
+                'registration_location_id': 'Campaign'
+            },
+            color_discrete_sequence=px.colors.qualitative.Pastel  # or other palettes like Plotly, Set2, etc.
+        )
+
+        # Layout styling
+        fig.update_layout(
+            title_font=dict(size=20, family='Arial', color='#374151'),
+            font=dict(size=14, family='Arial', color='#4B5563'),
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            xaxis=dict(
+                title=group_by.replace('_', ' ').title(),
+                showgrid=False,
+                linecolor='#E5E7EB'
+            ),
+            yaxis=dict(
+                title='Total Paid (SGD)',
+                showgrid=True,
+                gridcolor='#E5E7EB',
+                zeroline=False
+            ),
+            legend_title='',
+            margin=dict(t=50, l=150, r=150, b=40) 
         )
 
         return fig
+
 
     return app
