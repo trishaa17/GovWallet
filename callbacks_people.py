@@ -9,41 +9,62 @@ from dash import callback
 from urllib.parse import unquote
 import dash_bootstrap_components as dbc
 from dash_iconify import DashIconify
-from dashPeople import get_data, get_data_raw
+from dashPeople import get_data, get_data_raw, df1
 from graphs_people import DisbursementDashboardGraphs
 
 graphs_module = DisbursementDashboardGraphs(get_data, get_data_raw)
 
 def register_callbacks(dash_app):
     global app
-    app = dash_app
+    app = dash_app    
+    @app.callback(
+    Output('advanced-filter-container', 'style'),
+    Input('toggle-advanced-filters', 'n_clicks'),
+    prevent_initial_call=True)
+    def toggle_advanced_filters(n_clicks):
+        if n_clicks % 2 == 1:
+            return {'display': 'flex', 'flexWrap': 'wrap', 'marginBottom': '20px', 'gap': '10px'}
+        return {'display': 'none'}
 
     @app.callback(
-        Output('avg-shift-table', 'data'),
-        [Input('avg-sort-order', 'value'),
-        Input('name-filter-bottom', 'value')]  # Add name filter input
+        Output('identity-table', 'data'),
+        [
+            Input('identity-filter-btn', 'n_clicks'),
+            Input('name-filter-bottom', 'value'),
+            Input('gms-id-input', 'value'),
+            Input('badge-id-input', 'value'),
+            Input('role-input', 'value')
+        ]
     )
-    def update_avg_table(sort_order, selected_names):
-        df = get_data()
-        daily_shifts = df.groupby(['name', 'payout_date'])['shift_count'].sum().reset_index()
-        avg_shifts = daily_shifts.groupby('name')['shift_count'].mean().reset_index(name='avg_shifts_per_day')
-        
-        # Apply name filter
+    def update_identity_table(n_clicks, selected_names, gms_id, badge_id, role):
+        local_df = df1.copy()
+        local_df['name'] = local_df['name'].str.strip().str.upper()
+
+        people = local_df.drop_duplicates(subset='name')[['name', 'gms_id', 'badge_id', 'gms_role_name']].copy()
+
         if selected_names:
-            avg_shifts = avg_shifts[avg_shifts['name'].isin(selected_names)]
-        
-        avg_shifts['link'] = avg_shifts['name'].apply(lambda name: f"/app3/person/{urllib.parse.quote(name)}")
-        
-        ascending = (sort_order == 'asc')
-        avg_shifts = avg_shifts.sort_values(by='avg_shifts_per_day', ascending=ascending)
+            people = people[people['name'].isin(selected_names)]
+
+        if gms_id:
+            people = people[people['gms_id'].astype(str).str.contains(gms_id.strip(), case=False, na=False)]
+
+        if badge_id:
+            people = people[people['badge_id'].astype(str).str.contains(badge_id.strip(), case=False, na=False)]
+
+        if role:
+            people = people[people['gms_role_name'].astype(str).str.contains(role.strip(), case=False, na=False)]
 
         return [
             {
-                "link": f"[{row['name']}]({row['link']})",
-                "avg_shifts_per_day": row['avg_shifts_per_day']
+                "link": f"[{row['name'].title()}](/app3/person/{urllib.parse.quote(str(row['name']))})",
+                "gms_id": row['gms_id'] if pd.notna(row['gms_id']) else "—",
+                "badge_id": row['badge_id'] if pd.notna(row['badge_id']) else "—",
+                "gms_role_name": row['gms_role_name'] if pd.notna(row['gms_role_name']) else "—"
             }
-            for _, row in avg_shifts.iterrows()
+            for _, row in people.iterrows()
         ]
+
+
 
 
 def register_person_callbacks(dash_app):

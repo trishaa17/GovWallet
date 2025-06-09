@@ -7,6 +7,7 @@ import dash_bootstrap_components as dbc
 from datetime import datetime, timedelta
 import numpy as np
 
+
 class DisbursementDashboardGraphs:
     def __init__(self, data_function, raw_data_function):
         """
