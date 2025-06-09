@@ -22,46 +22,123 @@ def create_dash_rejection_rate(server):
 
     app = Dash(__name__, server=server, url_base_pathname='/appRejectionRate/')
 
-    app.layout = html.Div([
-        html.H1("Rejection Rate Dashboard"),
-
-        dcc.DatePickerRange(
-            id='date-filter',
-            min_date_allowed=df['payout_date'].min(),
-            max_date_allowed=df['payout_date'].max(),
-            start_date=df['payout_date'].min(),
-            end_date=df['payout_date'].max()
-        ),
-
-        dcc.Dropdown(
-            id='role-filter',
-            options=[{'label': r, 'value': r} for r in sorted(df['gms_role_name'].dropna().unique())],
-            placeholder="Select Role(s)",
-            multi=True
-        ),
-
-        dcc.Dropdown(
-            id='campaign-filter',
-            options=[{'label': c, 'value': c} for c in sorted(df['registration_location_id'].dropna().unique())],
-            placeholder="Select Campaign(s)",
-            multi=True
-        ),
-
-        dcc.Graph(id='rejection-pie'),
-
+    app.layout = html.Div([ 
+        # Header
+        html.Div([
+            html.H1("Rejection Rate Dashboard", 
+                    style={
+                        'margin': '0',
+                        'fontSize': '24px',
+                        'fontWeight': '600',
+                        'color': '#1f2937'
+                    })
+        ], style={
+            'padding': '20px 40px',
+            'backgroundColor': '#ffffff',
+            'borderBottom': '1px solid #e5e7eb'
+        }),
         
-        html.H3("Rejection/Success Summary by Role and Campaign"),
-        dash_table.DataTable(
-            id='summary-table',
-            columns=[],
-            data=[],
-            style_table={'overflowX': 'auto'},
-            sort_action='native',
-            style_cell={'textAlign': 'center', 'padding': '5px'},
-            style_header={'backgroundColor': 'lightgrey', 'fontWeight': 'bold'},
-            style_data_conditional=[]  # will be filled in callback
-        )
-    ])
+        # Main content container
+        html.Div([
+            # Filters section
+            html.Div([
+                # Left-side filters: Role and Campaign
+                html.Div([
+                    dcc.Dropdown(
+                        id='role-filter',
+                        options=[{'label': r, 'value': r} for r in sorted(df['gms_role_name'].dropna().unique())],
+                        placeholder="Select Role(s)",
+                        multi=True,
+                        style={
+                            'width': '280px',
+                            'marginBottom': '10px',
+                            'fontSize': '14px'
+                        }
+                    ),
+                    dcc.Dropdown(
+                        id='campaign-filter',
+                        options=[{'label': c, 'value': c} for c in sorted(df['registration_location_id'].dropna().unique())],
+                        placeholder="Select Campaign(s)",
+                        multi=True,
+                        style={
+                            'width': '280px',
+                            'fontSize': '14px'
+                        }
+                    )
+                ], style={'flex': '1'}),
+                
+                # Right-side: Date range
+                html.Div([
+                    dcc.DatePickerRange(
+                        id='date-filter',
+                        min_date_allowed=df['payout_date'].min(),
+                        max_date_allowed=df['payout_date'].max(),
+                        start_date=df['payout_date'].min(),
+                        end_date=df['payout_date'].max(),
+                        display_format='DD/MM/YYYY',
+                        with_portal=True,
+                        clearable=True
+                    )
+                ], style={
+                    'flex': '1',
+                    'display': 'flex',
+                    'justifyContent': 'flex-end'
+                })
+            ], style={
+                'display': 'flex',
+                'justifyContent': 'space-between',
+                'alignItems': 'flex-start',
+                'margin': '20px 40px'
+            }),
+            
+            # Graph section
+            html.Div([
+                dcc.Graph(id='rejection-pie')
+            ], style={
+                'margin': '20px 40px',
+                'backgroundColor': '#E6E8EC',
+                'padding': '20px',
+                'borderRadius': '8px'
+            }),
+
+
+            dash_table.DataTable(
+                id='summary-table',
+                columns=[],
+                data=[],
+                page_size=20,
+                style_table={
+                    'overflowX': 'auto',
+                    'border': '1px solid #e5e7eb',
+                    'borderRadius': '8px'
+                },
+                sort_action='native',
+                style_header={
+                    'backgroundColor': "#c4b8fa",
+                    'fontWeight': '600',
+                    'fontSize': '14px',
+                    'color': '#374151',
+                    'border': '1px solid #e5e7eb',
+                    'textAlign': 'center'
+                },
+                style_cell={
+                    'textAlign': 'center',
+                    'padding': '12px',
+                    'fontSize': '14px',
+                    'color': '#374151',
+                    'border': '1px solid #e5e7eb'
+                },
+                style_data={
+                    'backgroundColor': '#F1F1F1FF',
+                    'border': '1px solid #e5e7eb'
+                },
+                style_data_conditional=[]  # Filled in by callback
+            )
+
+        ], style={'padding': '0 20px 40px'})
+        
+    ], style={'fontFamily': 'Arial, sans-serif', 'backgroundColor': '#f3f4f6', 'minHeight': '100vh'})
+
 
     @app.callback(
         Output('rejection-pie', 'figure'),
@@ -92,9 +169,23 @@ def create_dash_rejection_rate(server):
         status_counts.columns = ['approval_final_status', 'count']
         print(status_counts)
 
-        fig = px.pie(status_counts, values='count', names='approval_final_status',
-                     title='Rejection vs Acceptance Rate',
-                     color_discrete_map={'approved': 'green', 'rejected': 'red'})
+        fig = px.pie(
+            status_counts,
+            values='count',
+            names='approval_final_status',
+            title='Rejection vs Acceptance Rate',
+            color='approval_final_status',
+            color_discrete_map={
+                'approved': "#a1eea1",   # pastel green
+                'rejected': "#f5847e"    # pastel red
+            }
+        )
+
+        fig.update_layout(
+            title={'x': 0.5},  # Center title
+            paper_bgcolor='#E6E8EC'  # Background for the pie chart container
+        )
+
 
         # Summary table
         summary = (
@@ -166,15 +257,20 @@ def create_dash_rejection_rate(server):
         # Highlight rows where rejection rate > 50%
         style_conditional = [
             {
+                'if': {'row_index': 'odd'},
+                'backgroundColor': '#ddd6fe'
+            },
+            {
                 'if': {
                     'filter_query': '{Rejection Rate} > 50',
                     'column_id': 'Rejection Rate'
                 },
-                'backgroundColor': '#ffcccc',
-                'color': 'red',
-                'fontWeight': 'bold'
+
+                'color': "#c25c5c",  # deeper red font
+                'fontWeight': '600'
             }
         ]
+
 
         return fig, columns, data, style_conditional
 
