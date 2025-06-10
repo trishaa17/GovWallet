@@ -1,6 +1,6 @@
 import pandas as pd
 import plotly.express as px
-from dash import Dash, dcc, html, dash_table, Input, Output
+from dash import Dash, dcc, html, dash_table, Input, Output, State
 import requests
 from io import StringIO
 import random
@@ -63,6 +63,7 @@ def detect_clashes_by_keyword(df, category_keywords):
 
 
 def create_dash_shift_clashes_venue(server):
+    # url = "https://wacsg2025-my.sharepoint.com/:x:/p/trisha_teo/EWMP-swatlRCjdz-VttIKnIBwf0pSEuxp5lq2aAXhCszNg?download=1"
     url = "https://wacsg2025-my.sharepoint.com/:x:/p/trisha_teo/EXMm4it_HQtPiiDnLuS4iWQB_QX4KRWYNExsu-yRGrK0bg?download=1"
     response = requests.get(url)
     response.raise_for_status()
@@ -96,51 +97,192 @@ def create_dash_shift_clashes_venue(server):
     this_monday = today - timedelta(days=today.weekday())  # Monday
     this_sunday = this_monday + timedelta(days=6) 
 
+    section_style = {
+        'backgroundColor': '#E6E8EC',
+        'padding': '20px',
+        'borderRadius': '10px',
+        'marginBottom': '30px',
+        'boxShadow': '0 2px 6px rgba(0,0,0,0.05)'
+    }
+
     app.layout = html.Div([
-        html.H1("GovWallet Shift Timing Clashes (Venue Manager Version)", style={'textAlign': 'center'}),
-
-        dcc.DatePickerRange(
-            id='date-range-clashes',
-            min_date_allowed=min_date,
-            max_date_allowed=max_date,
-            start_date=this_monday,
-            end_date=this_sunday,
-            display_format='YYYY-MM-DD'
-        ),
-
+        # Header
         html.Div([
-            html.Label("Filter by GMS ID:"),
-            dcc.Dropdown(id='filter-gms-id', options=[], multi=True, placeholder='Select GMS ID(s)'),
+            html.H1(
+                "GovWallet Shift Timing Clashes (Venue Manager Version)",
+                style={
+                    'margin': '0',
+                    'fontSize': '24px',
+                    'fontWeight': '600',
+                    'color': '#1f2937',
+                    'textAlign': 'center',
+                    'padding': '20px 40px',
+                    'backgroundColor': '#ffffff',
+                    'borderBottom': '1px solid #e5e7eb'
+                }
+            )
+        ], style={
+            'padding': '20px 40px',
+            'backgroundColor': '#ffffff',
+            'borderBottom': '1px solid #e5e7eb'
+        }),
 
-            html.Label("Filter by Name:", style={'marginLeft': '20px'}),
-            dcc.Dropdown(id='filter-name', options=[], multi=True, placeholder='Select Name(s)'),
+        # Main content
+        html.Div([
+            # Date Picker on the left
+            html.Div([
+                dcc.DatePickerRange(
+                    id='date-range-clashes',
+                    min_date_allowed=min_date,
+                    max_date_allowed=max_date,
+                    start_date=this_monday,
+                    end_date=this_sunday,
+                    display_format='YYYY-MM-DD',
+                    clearable=True,
+                    with_portal=True,
+                    style={'fontSize': '14px'}
+                )
+            ]),
+            
+            # Filter Button and Dropdown on the right
+            html.Div([
+                html.Button([
+                    html.Img(
+                        src="https://static.thenounproject.com/png/247545-200.png",
+                        style={'width': '20px', 'height': '20px'}
+                    )
+                ],
+                id='filter-toggle-btn',
+                style={
+                    'backgroundColor': "#C1C7D2",
+                    'border': 'none',
+                    'borderRadius': '50%',
+                    'width': '36px',
+                    'height': '36px',
+                    'cursor': 'pointer',
+                    'display': 'flex',
+                    'alignItems': 'center',
+                    'justifyContent': 'center',
+                    'transition': 'all 0.2s ease',
+                    'boxShadow': '0 2px 6px rgba(0,0,0,0.15)'
+                }),
 
-            html.Label("Filter by Campaign:", style={'marginLeft': '20px'}),
-            dcc.Dropdown(id='filter-location-id', options=[], multi=True, placeholder='Select Campaign(s)'),
-        ], style={'marginTop': '20px', 'marginBottom': '20px'}),
+                html.Div([
+                    html.Label("Filter by GMS ID:", style={'fontWeight': '600', 'marginTop': '10px'}),
+                    dcc.Dropdown(
+                        id='filter-gms-id',
+                        options=[],
+                        multi=True,
+                        placeholder='Select GMS ID(s)',
+                        style={'width': '300px', 'fontSize': '14px'}
+                    ),
+
+                    html.Label("Filter by Name:", style={'fontWeight': '600', 'marginTop': '15px'}),
+                    dcc.Dropdown(
+                        id='filter-name',
+                        options=[],
+                        multi=True,
+                        placeholder='Select Name(s)',
+                        style={'width': '300px', 'fontSize': '14px'}
+                    ),
+
+                    html.Label("Filter by Campaign:", style={'fontWeight': '600', 'marginTop': '15px'}),
+                    dcc.Dropdown(
+                        id='filter-location-id',
+                        options=[],
+                        multi=True,
+                        placeholder='Select Campaign(s)',
+                        style={'width': '300px', 'fontSize': '14px'}
+                    ),
+                ],
+                id='filter-dropdown-container',
+                style={
+                    'display': 'none',
+                    'position': 'absolute',
+                    'top': 'calc(100% + 10px)',
+                    'right': '0',
+                    'zIndex': '1000',
+                    'backgroundColor': '#fff',
+                    'padding': '15px',
+                    'boxShadow': '0 4px 8px rgba(0,0,0,0.1)',
+                    'borderRadius': '8px',
+                    'width': '340px'
+                })
+            ], style={'position': 'relative'}),
+
+        ], style={
+            'display': 'flex',
+            'justifyContent': 'space-between',
+            'alignItems': 'center',
+            'marginBottom': '20px'
+        }),
+
+        # Clash Summary Chart
+        html.Div(id='clash-summary-chart', style=section_style),
+
+        # Clash Detail Section
+        html.Div([
+            html.Label("Select Clash Shift Timing to View Details:", style={'fontWeight': '600', 'marginBottom': '10px'}),
+            dcc.Dropdown(
+                id='category-dropdown',
+                placeholder='Select a clashing shift timing',
+                style={'fontSize': '14px', 'marginBottom': '20px'}
+            ),
+            html.Div(id='category-table')
+        ], style=section_style),
+
+        # High-Risk GMS IDs Section
+        html.Div([
+            html.H2(
+                "High-Risk GMS IDs",
+                style={
+                    'textAlign': 'center',
+                    'fontSize': '18px',
+                    'fontWeight': '600',
+                    'color': '#1f2937',
+                    'marginTop': '40px',
+                    'marginBottom': '20px'
+                }
+            ),
+            html.Div(id='high-risk-gms-table')
+        ], style=section_style),
+
+    ], style={
+        'padding': '30px 40px',
+        'backgroundColor': '#ffffff',
+        'minHeight': 'calc(100vh - 80px)',
+        'fontFamily': '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+    })
 
 
-
-        html.Div(id='clash-summary-chart'),
-
-        html.Label("Select Clash Shift Timing to View Details:", style = {'fontWeight': 'bold'}),
-        dcc.Dropdown(id='category-dropdown', placeholder='Select a clashing shift timing'),
-
-        html.Div(id='category-table'),
-
-        html.Label("Key: View Campaigns for Selected Clash Timing:", style = {'fontWeight': 'bold'}),
-        dcc.Dropdown(
-            id='category-key-dropdown',
-            options=[{'label': key, 'value': key} for key in category_keywords.keys()],
-            placeholder='Select a category to view its campaign key',
-            style={'marginBottom': '10px'}
-        ),
-        html.Div(id='category-key-display'),
-
-        html.H2("High-Risk GMS IDs", style={'marginTop': '40px', 'textAlign': 'center'}),
-        html.Div(id='high-risk-gms-table')
-    ])
-
+    @app.callback(
+        Output('filter-dropdown-container', 'style'),
+        Input('filter-toggle-btn', 'n_clicks'),
+        State('filter-dropdown-container', 'style'),
+        prevent_initial_call=True
+    )
+    def toggle_filter_dropdown(n_clicks, current_style):
+        if not current_style or current_style.get('display') == 'none':
+            # Show dropdown
+            new_style = {
+                'display': 'block',
+                'position': 'absolute',
+                'top': 'calc(100% + 10px)',
+                'right': '0',
+                'zIndex': '1000',
+                'backgroundColor': '#fff',
+                'padding': '15px',
+                'boxShadow': '0 4px 8px rgba(0,0,0,0.1)',
+                'borderRadius': '8px',
+                'width': '340px'
+            }
+        else:
+            # Hide dropdown
+            new_style = current_style.copy()
+            new_style['display'] = 'none'
+        
+        return new_style
+    
     @app.callback(
         Output('filter-gms-id', 'options'),
         Output('filter-name', 'options'),
@@ -149,10 +291,20 @@ def create_dash_shift_clashes_venue(server):
         Input('date-range-clashes', 'end_date'),
     )
     def update_filter_options(start_date, end_date):
+        import pandas as pd
+        
+        if not start_date or not end_date:
+            return [], [], []
+        
         start = pd.to_datetime(start_date).date()
         end = pd.to_datetime(end_date).date()
 
-        all_data = pd.concat([df[(df['date_created'] >= start) & (df['date_created'] <= end)] for df in clash_dfs.values()])
+        filtered_dfs = [
+            df[(df['date_created'] >= start) & (df['date_created'] <= end)]
+            for df in clash_dfs.values()
+        ]
+        
+        all_data = pd.concat(filtered_dfs, ignore_index=True) if filtered_dfs else pd.DataFrame()
 
         gms_options = [{'label': x, 'value': x} for x in sorted(all_data['gms_id'].dropna().unique())]
         name_options = [{'label': x, 'value': x} for x in sorted(all_data['name'].dropna().unique())]
@@ -270,33 +422,29 @@ def create_dash_shift_clashes_venue(server):
                 {"name": "Wallet status", "id": "wallet_status"},
             ],
             data=df_filtered.to_dict('records'),
-            style_table={'overflowX': 'auto', 'marginBottom': '30px'},
-            style_cell={'textAlign': 'left'},
+            style_table={
+                'overflowX': 'auto',
+                'marginBottom': '30px',
+                'fontSize': '12px',
+                'fontFamily': '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+            },
+            style_cell={
+                'textAlign': 'left',
+                'fontSize': '12px',
+                'fontFamily': '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+            },
+            style_header={
+                'fontWeight': 'bold',
+                'fontSize': '12px',
+                'fontFamily': '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+            },
             style_data_conditional=style_data_conditional,
             page_size=10,
             sort_action='native',
-            style_header={'fontWeight': 'bold'},
+            
         )
 
-    @app.callback(
-        Output('category-key-display', 'children'),
-        Input('category-key-dropdown', 'value')
-    )
-    def display_category_key(selected_key):
-        if not selected_key:
-            return html.Div()
-
-        campaigns = not_allowed_clash_categories.get(selected_key, [])
-        return html.Div([
-            html.B(f"{selected_key} includes the following campaigns:"),
-            html.Ul([html.Li(campaign) for campaign in campaigns]),
-        ], style={
-            'marginTop': '10px',
-            'padding': '10px',
-            'border': '1px solid #ccc',
-            'borderRadius': '5px',
-            'backgroundColor': '#f9f9f9'
-        })
+  
 
     @app.callback(
         Output('high-risk-gms-table', 'children'),
@@ -344,20 +492,58 @@ def create_dash_shift_clashes_venue(server):
 
         df_risk = pd.DataFrame(high_risk_data).sort_values(by="num_categories", ascending=False)
 
-        return dash_table.DataTable(
-            columns=[
-                {"name": "GMS ID", "id": "gms_id"},
-                {"name": "Name(s)", "id": "name"},
-                {"name": "Categories of the clashes", "id": "clash_categories"},
-                {"name": "Number of clashes", "id": "num_categories"},
-            ],
-            data=df_risk.to_dict('records'),
-            style_table={'overflowX': 'auto'},
-            style_cell={'textAlign': 'left'},
-            page_size=10,
-            sort_action='native',
-            style_header={'fontWeight': 'bold'},
-        )
+        return html.Div([
+                dash_table.DataTable(
+                columns=[
+                    {"name": "GMS ID", "id": "gms_id"},
+                    {"name": "Name(s)", "id": "name"},
+                    {"name": "Categories of the clashes", "id": "clash_categories"},
+                    {"name": "Number of clashes", "id": "num_categories"},
+                ],
+                data=df_risk.to_dict('records'),
+                page_size=10,
+                sort_action='native',
+
+                style_table={
+                    'overflowX': 'auto',
+                    'border': '1px solid #e5e7eb',
+                    'borderRadius': '8px'
+                },
+
+                style_header={
+                    'backgroundColor': "#c4b8fa",
+                    'fontWeight': '600',
+                    'fontSize': '14px',
+                    'color': '#374151',
+                    'border': '1px solid #e5e7eb',
+                    'textAlign': 'left'
+                },
+
+                style_cell={
+                    'textAlign': 'left',
+                    'padding': '12px',
+                    'fontSize': '14px',
+                    'color': '#374151',
+                    'border': '1px solid #e5e7eb'
+                },
+
+                style_data={
+                    'backgroundColor': '#F1F1F1FF',
+                    'border': '1px solid #e5e7eb'
+                },
+
+                style_data_conditional=[
+                    {
+                        'if': {'row_index': 'odd'},
+                        'backgroundColor': '#ddd6fe'
+                    }
+                ],
+            )
+        ], style={
+            'padding': '0 20px',
+            'marginBottom': '40px'
+        })
+
 
 
 
