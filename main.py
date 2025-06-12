@@ -28,11 +28,8 @@ server.secret_key = 'your_super_secret_key_change_this_in_production'  # Change 
 
 # Define users (you can expand this or connect to a database)
 USERS = {
-    "admin": generate_password_hash("password123"),
-    "user": generate_password_hash("abc456"),
-    "demo": generate_password_hash("demo123"),
-    "trisha": generate_password_hash("nigga"),
-    "pek": generate_password_hash("nigga")
+    "admin": generate_password_hash("Password@123"),
+    "demo": generate_password_hash("Demo@123")
 }
 
 def login_required(f):
