@@ -18,6 +18,7 @@ response = requests.get(url)
 response.raise_for_status()
 csv_data = response.content.decode('utf-8')
 df1 = pd.read_csv(StringIO(csv_data))
+#df1 =  pd.read_csv("C:/Users/User/OneDrive - WORLD AQUATICS CHAMPIONSHIPS SINGAPORE PTE. LTD/Desktop/allowance 20250617-143336.csv")
 
 def get_data_raw():
     df = df1.copy()

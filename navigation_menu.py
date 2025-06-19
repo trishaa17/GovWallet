@@ -1,5 +1,3 @@
-# navigation_menu.py - Updated with logout button
-
 from dash_iconify import DashIconify
 from dash import dcc, html, Input, Output, callback, State, callback_context, clientside_callback
 import plotly.express as px
@@ -79,9 +77,10 @@ def create_vertical_icon_sidebar():
                         html.A("❌ Rejection Rate", href="/appRejectionRate/", className="dropdown-item"),
                         html.A("🗺️ Location Heatmap", href="/appLocationHeatmap/", className="dropdown-item"),
                         html.A("⚠️ Campaign Clashes", href="/appCampaignClashes/", className="dropdown-item"),
-                        html.A("Campaign Clashes Venue", href="/appCampaignClashesVenue/", className="dropdown-item"),
+                        html.A("📍 Campaign Clashes Venue", href="/appCampaignClashesVenue/", className="dropdown-item"),
                         html.A("🕐 Shift Clashes", href="/appShiftClashes/", className="dropdown-item"),
-                        html.A("Shift Clashes Venue", href="/appShiftClashesVenue/", className="dropdown-item"),
+                        html.A("📅 Shift Clashes Venue", href="/appShiftClashesVenue/", className="dropdown-item"),
+                        html.A("🧍‍♂️ Shift Entries", href= "/appEntries/", className="dropdown-item")
                     ], 
                     id="dashboard-dropdown",
                     className="nav-dropdown-inline",

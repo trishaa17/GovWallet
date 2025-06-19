@@ -12,6 +12,7 @@ from dashCampaignClashesVenue import create_dash_campaign_clashes_venue
 from dashShiftClashes import create_dash_shift_clashes
 from dashShiftClashesVenue import create_dash_shift_clashes_venue
 from dashPeople import layout_avg, layout_person
+from dashEntries import create_dash_entries
 from callbacks_people import register_callbacks, register_person_callbacks
 import dash_bootstrap_components as dbc
 from urllib.parse import unquote
@@ -57,27 +58,38 @@ def integrate_navigation_into_app(app, app_name):
     """Helper function to integrate navigation into any Dash app"""
     # Set up the index string with navigation CSS
     index_string = f'''
-    <!DOCTYPE html>
-    <html>
-        <head>
-            {{%metas%}}
-            <title>{{%title%}}</title>
-            {{%favicon%}}
-            {{%css%}}
-            <style>
-            {get_nav_css()}
-            </style>
-        </head>
-        <body>
-            {{%app_entry%}}
-            <footer>
-                {{%config%}}
-                {{%scripts%}}
-                {{%renderer%}}
-            </footer>
-        </body>
-    </html>
-    '''
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    {{%metas%}}
+                    <title>{{%title%}}</title>
+                    {{%favicon%}}
+                    {{%css%}}
+                    <style>
+                    {get_nav_css()}
+                    body {{
+                        background-image: url("https://images.unsplash.com/photo-1454117096348-e4abbeba002c?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D");
+                        background-size: cover;
+                        background-repeat: no-repeat;
+                        background-attachment: fixed;
+                        background-position: center center;
+                        margin: 0;
+                        padding: 0;
+                        min-height: 100vh;
+                    }}
+                    </style>
+                </head>
+                <body>
+                    {{%app_entry%}}
+                    <footer>
+                        {{%config%}}
+                        {{%scripts%}}
+                        {{%renderer%}}
+                    </footer>
+                </body>
+            </html>
+            '''
+
     app.index_string = index_string
     
     # Store the original layout
@@ -149,6 +161,11 @@ appShiftClashesVenue = integrate_navigation_into_app(
 appCampaignClashesVenue = integrate_navigation_into_app(
     create_dash_campaign_clashes_venue(server),
     "Campaign Clashes (VM)"
+)
+
+appEntries = integrate_navigation_into_app(
+    create_dash_entries(server),
+    "Volunteer Entries"
 )
 
 # Main app with navigation (app3)
@@ -596,9 +613,11 @@ def dashboard():
                         <option value="/appRejectionRate/">❌ Rejection Rate</option>
                         <option value="/appLocationHeatmap/">🗺️ Location Heatmap</option>
                         <option value="/appCampaignClashes/">⚠️ Campaign Clashes</option>
-                        <option value="/appCampaignClashesVenue/"> Campaign Clashes Venue</option>
+                        <option value="/appCampaignClashesVenue/">📍 Campaign Clashes Venue</option>
                         <option value="/appShiftClashes/">🕐 Shift Clashes</option>
-                        <option value="/appShiftClashesVenue/"> Shift Clashes Venue</option>
+                        <option value="/appShiftClashesVenue/">📅 Shift Clashes Venue</option>
+                        <option value="/appEntries/">🧍‍♂️ Shift Entries</option>
+
                     </select>
                     <button class="circular-icon" onclick="window.location.href='/app3/'"> 
                         <img src="https://static-00.iconduck.com/assets.00/profile-icon-512x512-w0uaq4yr.png" alt="Profile"> 
