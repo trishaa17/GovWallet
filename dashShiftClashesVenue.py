@@ -6,7 +6,7 @@ from io import StringIO
 import random
 from datetime import date, timedelta
 import colorsys
-# from loadcsv import load_csv_data
+from loadcsvnothistory import load_csv_data_not_history
 
 
 def generate_pastel_colors(n):
@@ -63,17 +63,18 @@ def detect_clashes_by_keyword(df, category_keywords):
 
 
 def create_dash_shift_clashes_venue(server):
-    # url = "https://wacsg2025-my.sharepoint.com/:x:/p/trisha_teo/EWMP-swatlRCjdz-VttIKnIBwf0pSEuxp5lq2aAXhCszNg?download=1"
-    url = "https://wacsg2025-my.sharepoint.com/:x:/p/trisha_teo/EXMm4it_HQtPiiDnLuS4iWQB_QX4KRWYNExsu-yRGrK0bg?download=1"
-    response = requests.get(url)
-    response.raise_for_status()
-    csv_data = response.content.decode('utf-8')
+    # # url = "https://wacsg2025-my.sharepoint.com/:x:/p/trisha_teo/EWMP-swatlRCjdz-VttIKnIBwf0pSEuxp5lq2aAXhCszNg?download=1"
+    # url = "https://wacsg2025-my.sharepoint.com/:x:/p/trisha_teo/EXMm4it_HQtPiiDnLuS4iWQB_QX4KRWYNExsu-yRGrK0bg?download=1"
+    # response = requests.get(url)
+    # response.raise_for_status()
+    # csv_data = response.content.decode('utf-8')
 
-    df = pd.read_csv(StringIO(csv_data))
-    # df = load_csv_data()
+    # df = pd.read_csv(StringIO(csv_data))
+    df = load_csv_data_not_history()
     df['date_created'] = pd.to_datetime(df['date_created'], utc=True)
     df['date_created'] = df['date_created'].dt.date
-    df = df[df['approval_final_status'].str.lower() == 'pending']
+    df = df[df['approval_1st_status'].str.lower() == 'approved']
+    df = df[df['approval_2nd_status'].str.lower() == 'approved']
 
 
     category_keywords = {

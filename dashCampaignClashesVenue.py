@@ -5,8 +5,8 @@ import requests
 from io import StringIO
 import random
 from datetime import date, timedelta
-from loadcsv import load_csv_data
 from dash import State
+from loadcsvnothistory import load_csv_data_not_history
 
 def generate_pastel_colors(n):
     import colorsys
@@ -97,15 +97,20 @@ def detect_clashes_by_category(df, clash_categories):
 
 
 def create_dash_campaign_clashes_venue(server):
-    url = "https://wacsg2025-my.sharepoint.com/:x:/p/trisha_teo/EXMm4it_HQtPiiDnLuS4iWQB_QX4KRWYNExsu-yRGrK0bg?download=1"
-    response = requests.get(url)
-    response.raise_for_status()
-    csv_data = response.content.decode('utf-8')
+    # url = "https://wacsg2025-my.sharepoint.com/:x:/p/trisha_teo/EXMm4it_HQtPiiDnLuS4iWQB_QX4KRWYNExsu-yRGrK0bg?download=1"
+    # response = requests.get(url)
+    # response.raise_for_status()
+    # csv_data = response.content.decode('utf-8')
 
-    df = pd.read_csv(StringIO(csv_data))
+    # df = pd.read_csv(StringIO(csv_data))
+    # df['date_created'] = pd.to_datetime(df['date_created'], utc=True)
+    # df['date_created'] = df['date_created'].dt.date
+    # df = df[df['approval_final_status'].str.lower() == 'pending']
+    df = load_csv_data_not_history()
     df['date_created'] = pd.to_datetime(df['date_created'], utc=True)
     df['date_created'] = df['date_created'].dt.date
-    df = df[df['approval_final_status'].str.lower() == 'pending']
+    df = df[df['approval_1st_status'].str.lower() == 'approved']
+    df = df[df['approval_2nd_status'].str.lower() == 'approved']
 
     not_allowed_clash_categories = {
         "AQC clashes": ("aqc_attendance_am", "aqc_attendance_silent_hours_am"),
