@@ -2,7 +2,7 @@ import pandas as pd
 import plotly.express as px
 from dash import Dash, dcc, html, Input, Output, dash_table, State
 import requests
-from io import StringIO
+from io import StringIO, BytesIO
 from datetime import datetime, date
 import dash_bootstrap_components as dbc
 from dash_iconify import DashIconify
@@ -10,10 +10,14 @@ from dash_iconify import DashIconify
 
 def create_dash_entries(server):
     # Load the Excel file
-    df = pd.read_excel("C:/Users/User/OneDrive - WORLD AQUATICS CHAMPIONSHIPS SINGAPORE PTE. LTD/Desktop/sportsg-swc-2024_attendance_report_20241101T105358+01Nov24.xlsx", sheet_name= "Sheet1")
+    #df = pd.read_excel("C:/Users/User/OneDrive - WORLD AQUATICS CHAMPIONSHIPS SINGAPORE PTE. LTD/Desktop/sportsg-swc-2024_attendance_report_20241101T105358+01Nov24.xlsx", sheet_name= "Sheet1")
+    url = "https://wacsg2025-my.sharepoint.com/:x:/p/pek_yi_liang/ETfDtmYnqRFGkY-oPqXrhVkBmoggzHvcVXE9YTNfGkUbWQ?download=1"
+    response = requests.get(url)
+    response.raise_for_status()
+    df = pd.read_excel(BytesIO(response.content))
     
-    # Filter for attendance-assisted-exit records
-    df = df[df['How'] == 'attendance-assisted-exit']
+    #df = pd.read_excel(url, sheet_name="Sheet1")
+    #df = df[df['How'] == 'attendance-assisted-exit']
     
     # Convert When column to datetime with explicit format handling
     df['When'] = pd.to_datetime(df['When'], format='mixed', errors='coerce')
@@ -21,18 +25,20 @@ def create_dash_entries(server):
     
     # Extract first and last names from the Who column
     # Assuming the Who column contains names that can be split
-    df['name_parts'] = df['Who'].astype(str).str.split()
-    df['first_name'] = df['name_parts'].apply(lambda x: x[0] if len(x) > 0 else '')
-    df['last_name'] = df['name_parts'].apply(lambda x: x[-1] if len(x) > 1 else '')
+    df['Who'] = df['Who'].astype(str).str.split()
+    df['first_name'] = df['Given Name']
+    df['last_name'] = df['Family Name']
     df['full_name'] = df['first_name'] + ' ' + df['last_name']
-    df['full_name'] = df['full_name'].str.strip()  # Remove extra spaces
+    df['full_name'] = df['full_name'].str.strip().str.upper()
+    df['Where'] = df['Where'].fillna("Unknown")
+    df['Category'] = df['Category'].fillna("Unknown")
     
     # Get date range for filters
     min_date = df['date'].min()
     max_date = df['date'].max()
     
     app = Dash(__name__, server=server, routes_pathname_prefix='/appEntries/', external_stylesheets=[dbc.themes.BOOTSTRAP])
-    app.title = "SportSG SWC 2024 Attendance Dashboard"
+    app.title = "SEA AGE Attendance Dashboard"
 
     # Updated background style with no gaps
     background_style = {
@@ -58,7 +64,7 @@ def create_dash_entries(server):
             # Header
             dbc.Row([
                 dbc.Col([
-                    html.H2("SportSG SWC 2024 Attendance Dashboard", 
+                    html.H2("SEA AGE Attendance Dashboard", 
                            className="text-center mb-4", 
                            style={
                             'color': 'Black', 'textAlign': 'center',
@@ -79,7 +85,7 @@ def create_dash_entries(server):
                     dbc.Card([
                                     html.Div([
                 html.Div([
-                    html.H5("Daily Attendance Entries"),
+                    html.H5("Daily Entries (By Entries)"),
                     html.Button([
                         DashIconify(icon="carbon:filter", width=20, style={'marginRight': '8px'}),
                         "Graph Filters"
@@ -164,7 +170,7 @@ def create_dash_entries(server):
                     dbc.Card([
                         dbc.CardHeader([
                             html.Div([
-                                html.H5("Daily Entries by Location", style={'margin': '0', 'color': '#1f2937'}),
+                                html.H5("Daily Attendance by Location (By Attendance)", style={'margin': '0', 'color': '#1f2937'}),
                             ], style={
                                 'display': 'flex',
                                 'alignItems': 'center',
@@ -185,12 +191,58 @@ def create_dash_entries(server):
                                     )
                                 ], width=4)
                             ]),
-                            dcc.Graph(id='location-breakdown-chart')
+                            dcc.Graph(id='location-breakdown-chart'),
+                            html.Div(id='location-summary-table')
                         ])
                     ], style={'border': '1px solid #e2e8f0', 'backgroundColor': 'rgba(255, 255, 255, 0.98)'})
                 ], width=12)
             ], className="mb-4 mt-0"),  # No top margin
             
+
+            # Entrance Breakdown Section
+            dbc.Row([
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader([
+                            html.Div([
+                                html.H5("Attendance Breakdown by Date and Venue (By Attendance)", style={'margin': '0', 'color': '#1f2937'}),
+                            ], style={
+                                'display': 'flex',
+                                'alignItems': 'center',
+                                'justifyContent': 'space-between',
+                                'padding': '15px',
+                                'backgroundColor': 'rgba(248, 249, 250, 0.9)',
+                                'borderRadius': '8px'
+                            })
+                        ]),
+                        dbc.CardBody([
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("Select Date", className="fw-bold mb-2"),
+                                    dcc.Dropdown(
+                                        id='entrance-date-dropdown',
+                                        options=[{'label': str(d), 'value': str(d)} for d in sorted(df['date'].unique(), reverse=True)],
+                                        placeholder="Select a date...",
+                                        className="mb-3"
+                                    )
+                                ], width=6),
+                                dbc.Col([
+                                    html.Label("Select Venue", className="fw-bold mb-2"),
+                                    dcc.Dropdown(
+                                        id='entrance-venue-dropdown',
+                                        options=[{'label': v, 'value': v} for v in sorted(df['Where'].str.split('_').str[0].unique())],
+                                        placeholder="Select a venue...",
+                                        className="mb-3"
+                                    )
+                                ], width=6)
+                            ]),
+                            dcc.Graph(id='entrance-breakdown-chart'),
+                            html.Div(id='entrance-summary-table')
+                        ])
+                    ], style={'border': '1px solid #e2e8f0', 'backgroundColor': 'rgba(255, 255, 255, 0.98)'})
+                ], width=12)
+            ], className="mb-4 mt-0"),
+
             # Entries Table Section - Simplified, no gaps
             dbc.Row([
                 dbc.Col([
@@ -292,9 +344,10 @@ def create_dash_entries(server):
     
     @app.callback(
         [Output('attendance-chart', 'figure'),
-         Output('summary-stats', 'children'),
-         Output('date-selector', 'options'),
-         Output('location-breakdown-chart', 'figure')],
+        Output('summary-stats', 'children'),
+        Output('date-selector', 'options'),
+        Output('location-breakdown-chart', 'figure'),
+        Output('location-summary-table', 'children')],
         [Input('date-range-picker', 'start_date'),
          Input('date-range-picker', 'end_date'),
          Input('location-dropdown', 'value'),
@@ -402,20 +455,78 @@ def create_dash_entries(server):
             title='Select a date to view location breakdown',
             labels={'x': 'Location', 'y': 'Number of Entries'}
         )
-        
+        summary_table = html.Div("No data for this date.", style={"textAlign": "center", "padding": "10px"})
         if selected_date:
             selected_date_obj = pd.to_datetime(selected_date).date()
-            date_filtered_df = filtered_df[filtered_df['date'] == selected_date_obj]
+            date_filtered_df = df[df['date'] == selected_date_obj].copy()
             
             if not date_filtered_df.empty:
-                location_counts = date_filtered_df.groupby('Where').size().reset_index(name='count')
+
+                #date_filtered_df = filtered_df[filtered_df['date'] == selected_date_obj].copy()
+                date_filtered_df['Who'] = date_filtered_df['Who'].astype(str)
+                date_filtered_df['VenuePrefix'] = date_filtered_df['Where'].str.split('_').str[0]
+
+                location_counts = (
+                    date_filtered_df
+                    .groupby('VenuePrefix')['Who']
+                    .nunique()
+                    .reset_index(name='count')
+                )
+
+                # Build bar chart
                 location_fig = px.bar(
                     location_counts,
-                    x='Where',
+                    x='VenuePrefix',
                     y='count',
-                    title=f'Entries by Location on {selected_date}',
-                    labels={'Where': 'Location', 'count': 'Number of Entries'}
+                    title=f'Unique People (by Who) per Venue on {selected_date}',
+                    labels={'VenuePrefix': 'Venue', 'count': 'Number of People'}
                 )
+                pivot_df = pd.pivot_table(
+                    date_filtered_df,
+                    index='Category',
+                    columns='VenuePrefix',
+                    values='Who',
+                    aggfunc='nunique',
+                    fill_value=0
+                ).reset_index()
+
+                # Add summary row to pivot table
+                summary_row = {}
+                summary_row['Category'] = 'TOTAL'
+                for col in pivot_df.columns:
+                    if col != 'Category':
+                        summary_row[col] = pivot_df[col].sum()
+                
+                # Append summary row to pivot_df
+                pivot_df = pd.concat([pivot_df, pd.DataFrame([summary_row])], ignore_index=True)
+
+                # Dash summary table
+                summary_table = dash_table.DataTable(
+                    data=pivot_df.to_dict('records'),
+                    columns=[{'name': str(c), 'id': str(c)} for c in pivot_df.columns],
+                    style_table={'overflowX': 'auto'},
+                    style_cell={
+                        'textAlign': 'center',
+                        'fontFamily': 'Arial',
+                        'fontSize': '13px',
+                        'padding': '10px'
+                    },
+                    style_header={
+                        'fontWeight': 'bold',
+                        'backgroundColor': '#f1f5f9'
+                    },
+                    style_data={
+                        'backgroundColor': '#ffffff'
+                    },
+                    style_data_conditional=[
+                        {
+                            'if': {'filter_query': '{Category} = TOTAL'},
+                            'backgroundColor': "#f0faff",
+                            'fontWeight': 'bold'
+                        }
+                    ]
+                )
+
                 location_fig.update_traces(marker_color='#10b981', marker_line_color='#059669', marker_line_width=1)
                 location_fig.update_xaxes(tickangle=45)
             else:
@@ -437,7 +548,7 @@ def create_dash_entries(server):
             yaxis={'gridcolor': '#f3f4f6'}
         )
         
-        return fig, summary_stats, date_options, location_fig
+        return fig, summary_stats, date_options, location_fig, summary_table
     
     @app.callback(
         [Output('data-table', 'children'),
@@ -462,11 +573,12 @@ def create_dash_entries(server):
         table_df = table_df.sort_values('When', ascending=False)
         
         # Prepare table data
-        table_data = table_df[['When', 'full_name', 'Where', 'Category']].copy()
+        table_data = table_df[['When', 'full_name', 'Who', 'Where', 'Category']].copy()
         table_data['When'] = table_data['When'].dt.strftime('%d/%m/%Y %H:%M')
         table_data = table_data.rename(columns={
             'When': 'Time',
             'full_name': 'Name',
+            'Who' : 'BN ID',
             'Where': 'Location',
             'Category': 'Category'
         })
@@ -524,4 +636,94 @@ def create_dash_entries(server):
         
         return data_table, info_message
     
+    @app.callback(
+        [Output('entrance-breakdown-chart', 'figure'),
+        Output('entrance-summary-table', 'children')],
+        [Input('entrance-date-dropdown', 'value'),
+        Input('entrance-venue-dropdown', 'value')]
+    )
+    def update_entrance_chart(selected_date, selected_venue):
+        if not selected_date or not selected_venue:
+            return px.bar(title="Please select both date and venue"), html.Div("No data to show.")
+
+        selected_date_obj = pd.to_datetime(selected_date).date()
+        filtered_df = df[df['date'] == selected_date_obj].copy()
+        filtered_df['VenuePrefix'] = filtered_df['Where'].str.split('_').str[0]
+        venue_df = filtered_df[filtered_df['VenuePrefix'] == selected_venue].copy()
+        venue_df['Who'] = venue_df['Who'].astype(str)
+
+        if venue_df.empty:
+            return px.bar(title=f"No entries for {selected_venue} on {selected_date}"), html.Div("No data to show.")
+
+        # Bar Chart
+        entrance_counts = (
+            venue_df.groupby('Where')['Who']
+            .nunique()
+            .reset_index(name='count')
+        )
+
+        fig = px.bar(
+            entrance_counts,
+            x='Where',
+            y='count',
+            title=f"Unique People per Entrance at {selected_venue} on {selected_date}",
+            labels={'Where': 'Entrance', 'count': 'Unique People'}
+        )
+        fig.update_traces(marker_color="#f16363", marker_line_color="#f16363", marker_line_width=1)
+        fig.update_layout(
+            xaxis_title="Entrance",
+            yaxis_title="Unique People",
+            title_x=0.5,
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font={'color': '#374151'},
+            xaxis={'gridcolor': '#f3f4f6'},
+            yaxis={'gridcolor': '#f3f4f6'}
+        )
+
+        # Summary Table: Pivot by Category x Entrance (Where)
+        pivot_df = pd.pivot_table(
+            venue_df,
+            index='Category',
+            columns='Where',
+            values='Who',
+            aggfunc='nunique',
+            fill_value=0
+        ).reset_index()
+
+        # Append summary row
+        summary_row = {'Category': 'TOTAL'}
+        for col in pivot_df.columns:
+            if col != 'Category':
+                summary_row[col] = pivot_df[col].sum()
+        pivot_df = pd.concat([pivot_df, pd.DataFrame([summary_row])], ignore_index=True)
+
+        summary_table = dash_table.DataTable(
+            data=pivot_df.to_dict('records'),
+            columns=[{'name': str(c), 'id': str(c)} for c in pivot_df.columns],
+            style_table={'overflowX': 'auto'},
+            style_cell={
+                'textAlign': 'center',
+                'fontFamily': 'Arial',
+                'fontSize': '13px',
+                'padding': '10px'
+            },
+            style_header={
+                'fontWeight': 'bold',
+                'backgroundColor': '#f1f5f9'
+            },
+            style_data={
+                'backgroundColor': '#ffffff'
+            },
+            style_data_conditional=[
+                {
+                    'if': {'filter_query': '{Category} = TOTAL'},
+                    'backgroundColor': "#f0faff",
+                    'fontWeight': 'bold'
+                }
+            ]
+        )
+
+        return fig, summary_table
+
     return app
