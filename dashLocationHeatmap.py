@@ -14,7 +14,7 @@ def create_dash_heatmap(server):
 
     df = load_csv_data()
 
-    df = df[df['wallet_status'] == 'completed']
+    df = df[df['approval_stage'] == 'completed']
     df['payout_date'] = pd.to_datetime(df['payout_date'])
 
     location_keywords = [

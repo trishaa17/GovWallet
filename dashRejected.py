@@ -15,7 +15,7 @@ def create_dash_rejection_rate(server):
     df = load_csv_data()
 
     df['payout_date'] = pd.to_datetime(df['payout_date']).dt.date
-    df['wallet_status'] = df['wallet_status'].str.lower()
+    df['approval_stage'] = df['approval_stage'].str.lower()
     df['gms_role_name'] = df['gms_role_name'].fillna('Unknown Role')
     df['registration_location_id'] = df['registration_location_id'].fillna('Unknown Campaign')
 

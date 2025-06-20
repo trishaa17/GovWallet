@@ -472,7 +472,7 @@ def create_dash_campaign_clashes_venue(server):
                 {"name": "Final approval status", "id": "approval_final_status"},
                 {"name": "Amount", "id": "amount"},
                 {"name": "Final approval remarks", "id": "approval_final_remarks"},
-                {"name": "Wallet status", "id": "wallet_status"},
+                {"name": "Wallet status", "id": "approval_stage"},
             ],
             data=df_filtered.to_dict('records'),
             style_table={

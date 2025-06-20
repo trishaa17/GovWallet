@@ -128,7 +128,7 @@ def register_person_callbacks(dash_app):
                     html.Td(f"${amount:.2f}")
                 ]) for shift, status, amount in zip(
                     group['registration_location_id'], 
-                    group['wallet_status'], 
+                    group['approval_stage'], 
                     group['amount']
                 )
             ]

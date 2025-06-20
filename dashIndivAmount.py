@@ -16,7 +16,7 @@ def create_dash_individual_amount(server):
 
     df = load_csv_data()
 
-    df = df[df['wallet_status'] == 'completed']
+    df = df[df['approval_stage'] == 'completed']
     df['date_created'] = pd.to_datetime(df['date_created']).dt.date
 
     # Aggregate names for display later

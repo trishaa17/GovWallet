@@ -11,13 +11,15 @@ import dash_bootstrap_components as dbc
 from dash_iconify import DashIconify
 from graphs_people import DisbursementDashboardGraphs
 from navigation_menu import create_vertical_icon_sidebar
+from loadcsv import load_csv_data
 
-app = None  # global placeholder
-url = "https://wacsg2025-my.sharepoint.com/:x:/p/trisha_teo/EfFwqNRlqjdKgUnvBWe53SEBKKJA9yK7RomjADmwfuT6iQ?download=1"
-response = requests.get(url)
-response.raise_for_status()
-csv_data = response.content.decode('utf-8')
-df1 = pd.read_csv(StringIO(csv_data))
+
+#app = None  # global placeholder
+#url = "https://wacsg2025-my.sharepoint.com/:x:/p/pek_yi_liang/EQe8apMiM8NJmHTjQN0mZGMBAcczTY0kINCLPWVYeJxSbg?download=1"
+#response = requests.get(url)
+#response.raise_for_status()
+#csv_data = response.content.decode('utf-8')
+df1 = load_csv_data()
 #df1 =  pd.read_csv("C:/Users/User/OneDrive - WORLD AQUATICS CHAMPIONSHIPS SINGAPORE PTE. LTD/Desktop/allowance 20250617-143336.csv")
 
 def get_data_raw():
@@ -32,7 +34,7 @@ def get_data():
     df = df1.copy()
     df['payout_date'] = pd.to_datetime(df['payout_date'], errors='coerce').dt.date
     df = df.dropna(subset=['name', 'payout_date'])
-    df = df[df['wallet_status'].str.lower() != 'pending']  # 👈 Filter out pending
+    df = df[df['approval_stage'].str.lower() != 'pending']  # 👈 Filter out pending
     df['shift_count'] = 1
     return df
 
@@ -299,7 +301,7 @@ def layout_person(name):
     df2['shift_count'] = 1 
     df2['payout_date'] = pd.to_datetime(df2['payout_date'], errors='coerce').dt.date
     df2 = df2.dropna(subset=['payout_date'])
-    df2 = df2[df2['wallet_status'].str.lower() != 'pending']  # 👈 Filter out pending
+    df2 = df2[df2['approval_stage'].str.lower() != 'pending']  # 👈 Filter out pending
 
 
     # Get profile information with safe access
@@ -317,7 +319,7 @@ def layout_person(name):
         
         # Safe access to columns with defaults
         shifts = group.get('registration_location_id', pd.Series(['Unknown'] * len(group)))
-        statuses = group.get('wallet_status', pd.Series(['Unknown'] * len(group)))
+        statuses = group.get('approval_stage', pd.Series(['Unknown'] * len(group)))
         amounts = group.get('amount', pd.Series([0.0] * len(group)))
         
         shift_details = [
