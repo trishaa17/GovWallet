@@ -19,14 +19,14 @@ import requests
 import io
 
 # URL 1
-url1 = "https://wacsg2025-my.sharepoint.com/:x:/p/pek_yi_liang/EaailNHiTIZJg1bQAjwI7IMBJTPRCX1EuQ_ddpZtVp0KeQ?e=APlQwV&download=1"
+url1 = "https://wacsg2025-my.sharepoint.com/:x:/p/pek_yi_liang/ESy-RRjcOPdBgqfuuk_55YsBB4x3cX67daKiKwHq0A0xgA?e=CM9fub&download=1"
 response1 = requests.get(url1)
 response1.raise_for_status()
 csv_data1 = response1.content.decode('utf-8')
 df1 = pd.read_csv(io.StringIO(csv_data1))
 
 # URL 2 (fix the URL syntax)
-url3 = "https://wacsg2025-my.sharepoint.com/:x:/p/pek_yi_liang/ETZLq4IWZAxDu__BuK0V-MMBNCkS6thdahVkdfLFKDyq7A?e=q29CHL&download=1"
+url3 = "https://wacsg2025-my.sharepoint.com/:x:/p/pek_yi_liang/EYByP1ybOBxKlPl6wpPGcg4BOSo4C13dvOvKIGZxX8rU1Q?e=jnocXy&download=1"
 response3 = requests.get(url3)
 response3.raise_for_status()
 csv_data3 = response3.content.decode('utf-8')

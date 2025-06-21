@@ -6,7 +6,7 @@ from io import StringIO
 _csv_cache = {'data': None, 'last_updated': 0}
 TTL_SECONDS = 300  # 5 minutes
 
-DATA_URL = "https://wacsg2025-my.sharepoint.com/:x:/p/pek_yi_liang/EQe8apMiM8NJmHTjQN0mZGMBAcczTY0kINCLPWVYeJxSbg?download=1"
+DATA_URL = "https://wacsg2025-my.sharepoint.com/:x:/p/pek_yi_liang/EYByP1ybOBxKlPl6wpPGcg4BOSo4C13dvOvKIGZxX8rU1Q?e=jnocXy&download=1"
 
 def load_csv_data():
     now = time.time()
