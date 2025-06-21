@@ -56,7 +56,7 @@ def register_callbacks(dash_app):
 
         return [
             {
-                "link": f"[{row['name'].title()}](/app3/person/{urllib.parse.quote(str(row['name']))})",
+                "link": f"[{str(row['name']).title() if pd.notna(row['name']) else 'Name Not Found'}](/app3/person/{urllib.parse.quote(str(row['name']) if pd.notna(row['name']) else 'Name Not Found')})",
                 "gms_id": row['gms_id'] if pd.notna(row['gms_id']) else "—",
                 "badge_id": row['badge_id'] if pd.notna(row['badge_id']) else "—",
                 "gms_role_name": row['gms_role_name'] if pd.notna(row['gms_role_name']) else "—"

@@ -693,4 +693,4 @@ def refresh_cache():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
-    server.run(host='0.0.0.0', port=8050, debug=True)
+    server.run(debug=True)
