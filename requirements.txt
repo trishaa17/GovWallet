@@ -6,3 +6,5 @@ gunicorn
 dash-bootstrap-components
 dash-iconify
 openpyxl
+requests
+msoffcrypto-tool
