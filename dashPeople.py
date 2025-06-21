@@ -14,13 +14,33 @@ from navigation_menu import create_vertical_icon_sidebar
 from loadcsv import load_csv_data
 
 
-#app = None  # global placeholder
-#url = "https://wacsg2025-my.sharepoint.com/:x:/p/pek_yi_liang/EQe8apMiM8NJmHTjQN0mZGMBAcczTY0kINCLPWVYeJxSbg?download=1"
-#response = requests.get(url)
-#response.raise_for_status()
-#csv_data = response.content.decode('utf-8')
-df1 = load_csv_data()
-#df1 =  pd.read_csv("C:/Users/User/OneDrive - WORLD AQUATICS CHAMPIONSHIPS SINGAPORE PTE. LTD/Desktop/allowance 20250617-143336.csv")
+import pandas as pd
+import requests
+import io
+
+# URL 1
+url1 = "https://wacsg2025-my.sharepoint.com/:x:/p/pek_yi_liang/EaailNHiTIZJg1bQAjwI7IMBJTPRCX1EuQ_ddpZtVp0KeQ?e=APlQwV&download=1"
+response1 = requests.get(url1)
+response1.raise_for_status()
+csv_data1 = response1.content.decode('utf-8')
+df1 = pd.read_csv(io.StringIO(csv_data1))
+
+# URL 2 (fix the URL syntax)
+url3 = "https://wacsg2025-my.sharepoint.com/:x:/p/pek_yi_liang/ETZLq4IWZAxDu__BuK0V-MMBNCkS6thdahVkdfLFKDyq7A?e=q29CHL&download=1"
+response3 = requests.get(url3)
+response3.raise_for_status()
+csv_data3 = response3.content.decode('utf-8')
+df3 = pd.read_csv(io.StringIO(csv_data3))
+
+# Combine
+df1 = pd.concat([df1, df3], ignore_index=True)
+
+
+#file2 = "/Users/pekkerz/Downloads/allowance_history 20250621-161750.csv"
+#file1 = "/Users/pekkerz/Downloads/allowance 20250621-153523.csv"
+#df1 =  pd.read_csv(file1)
+#df3 = pd.read_csv(file2)
+#combined.to_csv(file1, index=False)
 
 def get_data_raw():
     df = df1.copy()
@@ -34,7 +54,7 @@ def get_data():
     df = df1.copy()
     df['payout_date'] = pd.to_datetime(df['payout_date'], errors='coerce').dt.date
     df = df.dropna(subset=['name', 'payout_date'])
-    df = df[df['approval_stage'].str.lower() != 'pending']  # 👈 Filter out pending
+    #df = df[df['approval_stage'].str.lower() != 'pending']  # 👈 Filter out pending
     df['shift_count'] = 1
     return df
 
@@ -143,6 +163,13 @@ def layout_avg():
 
     # Get unique people and their identity info
     people = df1.drop_duplicates(subset='name')[['name', 'gms_id', 'badge_id', 'gms_role_name']].copy()
+    
+    # Calculate shift counts for each person
+    shift_counts = df.groupby('name').size().reset_index(name='shift_count')
+    
+    # Merge shift counts with people data
+    people = people.merge(shift_counts, on='name', how='left')
+    people['shift_count'] = people['shift_count'].fillna(0).astype(int)
 
     return html.Div([
         html.Div([
@@ -156,7 +183,7 @@ def layout_avg():
                 html.Div([
                     dcc.Dropdown(
                         id='name-filter-bottom',
-                        options=[{'label': n.title(), 'value': n} for n in sorted(people['name'].unique())],
+                        options=[{'label': n.title(), 'value': n} for n in sorted(people['name'].fillna('Name Not Found').astype(str).unique())],
                         placeholder="Search Name(s)",
                         multi=True,
                         style={'width': '100%', 'flex': 1, 'marginRight': '10px'}
@@ -228,15 +255,17 @@ def layout_avg():
                         {"name": "Name", "id": "link", "presentation": "markdown"},
                         {"name": "GMS ID", "id": "gms_id"},
                         {"name": "Badge ID", "id": "badge_id"},
-                        {"name": "Role", "id": "gms_role_name"}
+                        {"name": "Role", "id": "gms_role_name"},
+                        {"name": "Shift Count", "id": "shift_count", "type": "numeric"}
                     ],
                     markdown_options={"html": True},
-                    data=[
+                    data = [
                         {
-                            "link": f"[{row['name'].title()}](/app3/person/{urllib.parse.quote(str(row['name']))})",
+                            "link": f"[{(str(row['name']).title() if isinstance(row['name'], str) else 'Name Not Found')}](/app3/person/{urllib.parse.quote(str(row['name']) if pd.notna(row['name']) else 'Name Not Found')})",
                             "gms_id": row['gms_id'] if pd.notna(row['gms_id']) else "—",
                             "badge_id": row['badge_id'] if pd.notna(row['badge_id']) else "—",
-                            "gms_role_name": row['gms_role_name'] if pd.notna(row['gms_role_name']) else "—"
+                            "gms_role_name": row['gms_role_name'] if pd.notna(row['gms_role_name']) else "—",
+                            "shift_count": row['shift_count']
                         }
                         for _, row in people.iterrows()
                     ],
@@ -261,10 +290,26 @@ def layout_avg():
                         {
                             'if': {'row_index': 'odd'},
                             'backgroundColor': 'rgba(240,248,255,0.8)'
+                        },
+                        # Highlight high shift counts
+                        {
+                            'if': {'filter_query': '{shift_count} > 10'},
+                            'backgroundColor': 'rgba(144,238,144,0.3)',
+                            'color': 'black'
+                        },
+                        # Highlight very high shift counts
+                        {
+                            'if': {'filter_query': '{shift_count} > 20'},
+                            'backgroundColor': 'rgba(255,215,0,0.3)',
+                            'color': 'black'
                         }
                     ],
                     page_size=15,
-                    style_table={'overflowX': 'auto'}
+                    style_table={'overflowX': 'auto'},
+                    # Enable sorting
+                    sort_action="native",
+                    # Sort by shift count in descending order by default
+                    sort_by=[{"column_id": "shift_count", "direction": "desc"}]
                 )
             ], style={
                 'borderRadius': '15px',
@@ -300,8 +345,8 @@ def layout_person(name):
     
     df2['shift_count'] = 1 
     df2['payout_date'] = pd.to_datetime(df2['payout_date'], errors='coerce').dt.date
-    df2 = df2.dropna(subset=['payout_date'])
-    df2 = df2[df2['approval_stage'].str.lower() != 'pending']  # 👈 Filter out pending
+    #df2 = df2.dropna(subset=['payout_date'])
+    #df2 = df2[df2['approval_stage'].str.lower() != 'pending']  # 👈 Filter out pending
 
 
     # Get profile information with safe access
@@ -313,6 +358,50 @@ def layout_person(name):
     # Create initial accordion items
     grouped = df2.groupby('payout_date')
     accordion_items = []
+    
+    approval_groups = df2.groupby('approval_stage')
+        # Create sections for each approval stage
+    shifts_sections = []
+    for stage, group in approval_groups:
+            stage_name = str(stage).title() if pd.notna(stage) else "Unknown Status"
+            shift_count = len(group)
+            
+            shifts_sections.append(
+                html.Div([
+                    html.H5(f"Approval Status: {stage_name} ({shift_count} shifts)", style={
+                        'marginBottom': '4px',
+                        'color': '#2c3e50',
+                        'fontWeight': '600',
+                        'paddingBottom': '2px',
+                        #'borderBottom': '2px solid #e2e8f0'
+                    }),
+                    dash_table.DataTable(
+                        columns=[
+                            {"name": "Name", "id": "name"},
+                            {"name": "Date", "id": "payout_date"},
+                            {"name": "Shift Name", "id": "registration_location_id"},
+                            {"name": "Approval Stage", "id": "approval_stage"}
+                        ],
+                        data=group.to_dict('records'),
+                        style_table={'overflowX': 'auto', 'borderRadius': '8px', 'overflow': 'hidden', 'marginBottom': '25px'},
+                        style_cell={
+                            'textAlign': 'left',
+                            'padding': '12px',
+                            'fontFamily': 'Inter, sans-serif'
+                        },
+                        style_header={
+                            'backgroundColor': '#f8f9fa',
+                            'fontWeight': 'bold',
+                            'color': '#2c3e50'
+                        },
+                        style_data={
+                            'backgroundColor': '#ffffff',
+                            'border': '1px solid #e2e8f0'
+                        },
+                        page_size=20
+                    )
+                ], style={'marginBottom': '30px'})
+            )
     
     for date, group in grouped:
         total_shifts_date = group.shape[0]
@@ -578,7 +667,7 @@ def layout_person(name):
                 'boxShadow': '0 4px 12px rgba(0, 0, 0, 0.15)'
             })
         ]),
-        
+
         # Volunteer's Shifts Table with better styling
         html.Div([
             html.H4("Volunteer's Shifts", style={
@@ -586,30 +675,7 @@ def layout_person(name):
                 'color': '#2c3e50',
                 'fontWeight': '600'
             }),
-            dash_table.DataTable(
-                columns=[
-                    {"name": "Name", "id": "name"},
-                    {"name": "Date", "id": "payout_date"},
-                    {"name": "Shift Name", "id": "registration_location_id"}
-                ],
-                data=df2.to_dict('records'),
-                style_table={'overflowX': 'auto', 'borderRadius': '8px', 'overflow': 'hidden'},
-                style_cell={
-                    'textAlign': 'left',
-                    'padding': '12px',
-                    'fontFamily': 'Inter, sans-serif'
-                },
-                style_header={
-                    'backgroundColor': '#f8f9fa',
-                    'fontWeight': 'bold',
-                    'color': '#2c3e50'
-                },
-                style_data={
-                    'backgroundColor': '#ffffff',
-                    'border': '1px solid #e2e8f0'
-                },
-                page_size=20
-            )
+            html.Div(shifts_sections)
         ], style={
             'backgroundColor': 'white',
             'padding': '25px',

@@ -6,18 +6,28 @@ from io import StringIO, BytesIO
 from datetime import datetime, date
 import dash_bootstrap_components as dbc
 from dash_iconify import DashIconify
+import msoffcrypto
+import io
 
 
 def create_dash_entries(server):
     # Load the Excel file
-    #df = pd.read_excel("C:/Users/User/OneDrive - WORLD AQUATICS CHAMPIONSHIPS SINGAPORE PTE. LTD/Desktop/sportsg-swc-2024_attendance_report_20241101T105358+01Nov24.xlsx", sheet_name= "Sheet1")
-    url = "https://wacsg2025-my.sharepoint.com/:x:/p/pek_yi_liang/ETfDtmYnqRFGkY-oPqXrhVkBmoggzHvcVXE9YTNfGkUbWQ?download=1"
+
+    url = "https://wacsg2025-my.sharepoint.com/:x:/p/pek_yi_liang/EdM0Y1fy_6lNkJR7fAAdx5gBNxzzLUAt3eVIz3bqxqVrpg?e=hrReix&download=1"
+    password = "wacsg2025"
     response = requests.get(url)
     response.raise_for_status()
-    df = pd.read_excel(BytesIO(response.content))
-    
-    #df = pd.read_excel(url, sheet_name="Sheet1")
-    #df = df[df['How'] == 'attendance-assisted-exit']
+    encrypted = io.BytesIO(response.content)
+    office_file = msoffcrypto.OfficeFile(encrypted)
+    office_file.load_key(password=password)
+    decrypted = io.BytesIO()
+    office_file.decrypt(decrypted)
+    df = pd.read_excel(decrypted, sheet_name="Sheet1") 
+
+    #url = "https://wacsg2025-my.sharepoint.com/:x:/p/pek_yi_liang/ETfDtmYnqRFGkY-oPqXrhVkBmoggzHvcVXE9YTNfGkUbWQ?download=1"
+    #response = requests.get(url)
+    #response.raise_for_status()
+    #df = pd.read_excel(BytesIO(response.content))
     
     # Convert When column to datetime with explicit format handling
     df['When'] = pd.to_datetime(df['When'], format='mixed', errors='coerce')
